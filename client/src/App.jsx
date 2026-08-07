@@ -35,10 +35,8 @@ function cx(...classes) {
 
 function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-2 font-extrabold text-lg text-brand-navy">
-      <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-blue text-white">
-        <GraduationCap size={20} />
-      </span>
+    <Link to="/" className="brand-logo">
+      <span>S</span>
       SmartTutor
     </Link>
   );
@@ -169,13 +167,23 @@ function AppShell({ children }) {
               </NavLink>
             ))}
           </nav>
-          <div className="relative">
-            <button className="flex items-center gap-2 rounded-xl p-2 hover:bg-surface-shell" onClick={() => setOpen((value) => !value)}>
-              <Avatar user={user} />
-              <ChevronDown size={16} />
+          <div className="nav-actions">
+            <button
+              className="nav-signout"
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+            >
+              Sign Out
             </button>
-            {open ? (
-              <div className="dropdown">
+            <div className="relative">
+              <button className="profile-trigger" onClick={() => setOpen((value) => !value)} aria-label="Open profile menu">
+                <Avatar user={user} />
+                <ChevronDown size={16} />
+              </button>
+              {open ? (
+                <div className="dropdown">
                 <div className="bg-surface-info p-4">
                   <p className="font-extrabold">{user.name}</p>
                   <p className="text-xs font-semibold capitalize text-slate-500">{user.role}</p>
@@ -196,7 +204,8 @@ function AppShell({ children }) {
                   <LogOut size={16} /> Sign Out
                 </button>
               </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         </div>
       </header>
@@ -460,56 +469,131 @@ function ProfilePage() {
   );
 }
 
+const searchSubjects = ["Mathematics", "Physics", "Chemistry", "English", "History", "Computer Science"];
+const searchLanguages = ["English", "Hindi", "Mandarin", "Spanish"];
+
+function FilterSelect({ label, value, onChange, options }) {
+  return (
+    <label className="search-filter">
+      <span className="sr-only">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{label}</option>
+        {options.map((option) => (
+          <option key={option.value || option} value={option.value || option}>{option.label || option}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function tutorBadges(tutor) {
+  return [
+    Number(tutor.rating || 0) >= 4.8 ? "Top Rated" : null,
+    tutor.qualifications?.some((item) => item.toLowerCase().includes("phd")) ? "Expert" : null
+  ].filter(Boolean);
+}
+
+function tutorExperience(tutor) {
+  const match = tutor.bio?.match(/(\d+)\s+years?/i);
+  return match ? `${match[1]} yrs experience` : "Experienced tutor";
+}
+
 function TutorSearchPage() {
-  const [filters, setFilters] = useState({ subject: "", maxPrice: "", minRating: "", sort: "relevance" });
+  const [filters, setFilters] = useState({
+    q: "",
+    subject: "",
+    maxPrice: "",
+    minRating: "",
+    availability: "",
+    language: "",
+    sort: "relevance"
+  });
+  const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
   const queryString = new URLSearchParams(Object.fromEntries(Object.entries(filters).filter(([, value]) => value))).toString();
   const { data, isLoading } = useQuery({ queryKey: ["tutors", filters], queryFn: () => api(`/tutors?${queryString}`) });
+  const tutors = data?.tutors || [];
+
   return (
-    <>
-      <PageTitle title="Find a Tutor" subtitle="Search real tutor records with combined subject, price, rating, language, and sort filters." />
-      <section className="card mb-6 grid gap-3 p-4 md:grid-cols-[1fr_150px_150px_150px]">
-        <Field label="Subject" value={filters.subject} onChange={(event) => setFilters({ ...filters, subject: event.target.value })} placeholder="Mathematics" />
-        <Field label="Max price" type="number" value={filters.maxPrice} onChange={(event) => setFilters({ ...filters, maxPrice: event.target.value })} />
-        <Field label="Min rating" type="number" step="0.1" value={filters.minRating} onChange={(event) => setFilters({ ...filters, minRating: event.target.value })} />
-        <label className="block">
-          <span className="mb-2 block text-sm font-bold">Sort by</span>
-          <select className="field" value={filters.sort} onChange={(event) => setFilters({ ...filters, sort: event.target.value })}>
+    <div className="tutor-search-page">
+      <form className="search-toolbar" onSubmit={(event) => event.preventDefault()}>
+        <label className="search-input">
+          <span className="sr-only">Search by subject or tutor name</span>
+          <Search size={16} />
+          <input value={filters.q} onChange={(event) => updateFilter("q", event.target.value)} placeholder="Search by subject, tutor name..." />
+        </label>
+        <Button className="search-submit" type="submit">Search</Button>
+        <FilterSelect label="Subject" value={filters.subject} onChange={(value) => updateFilter("subject", value)} options={searchSubjects} />
+        <FilterSelect label="Price" value={filters.maxPrice} onChange={(value) => updateFilter("maxPrice", value)} options={[
+          { label: "Under $50", value: "50" },
+          { label: "Under $60", value: "60" },
+          { label: "Under $70", value: "70" }
+        ]} />
+        <FilterSelect label="Rating" value={filters.minRating} onChange={(value) => updateFilter("minRating", value)} options={[
+          { label: "4.5+", value: "4.5" },
+          { label: "4.8+", value: "4.8" },
+          { label: "4.9+", value: "4.9" }
+        ]} />
+        <FilterSelect label="Availability" value={filters.availability} onChange={(value) => updateFilter("availability", value)} options={[
+          { label: "Any open slot", value: "available" },
+          { label: "Online", value: "online" },
+          { label: "In-Person", value: "in-person" }
+        ]} />
+        <FilterSelect label="Language" value={filters.language} onChange={(value) => updateFilter("language", value)} options={searchLanguages} />
+      </form>
+
+      <div className="search-summary">
+        <p>{isLoading ? "Loading tutors" : `${data?.total || 0} tutors found`}</p>
+        <label>
+          <span>Sort by:</span>
+          <select value={filters.sort} onChange={(event) => updateFilter("sort", event.target.value)}>
             <option value="relevance">Relevance</option>
             <option value="rating">Rating</option>
             <option value="price">Price</option>
           </select>
         </label>
-      </section>
-      <div className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-500"><Search size={17} /> {isLoading ? "Loading" : `${data?.total || 0} tutors found`}</div>
-      <div className="grid gap-4">
-        {(data?.tutors || []).map((tutor) => (
-          <article key={tutor.id} className="card p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex gap-4">
-                <Avatar user={tutor} />
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-extrabold">{tutor.name}</h2>
-                    {tutor.verified ? <Badge tone="success">Verified</Badge> : null}
-                    {tutor.rating >= 4.8 ? <Badge tone="warning">Top Rated</Badge> : null}
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">{tutor.subjects?.join(" · ")}</p>
-                  <p className="mt-3 max-w-2xl text-sm text-slate-600">{tutor.bio}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-extrabold">${tutor.price}</p>
-                <p className="flex items-center justify-end gap-1 text-sm font-bold text-status-warning"><Star size={15} fill="currentColor" /> {tutor.rating}</p>
-                <Link className="btn btn-secondary mt-3" to={`/tutors/${tutor.id}`}>View Profile</Link>
-              </div>
-            </div>
-          </article>
-        ))}
       </div>
-    </>
+
+      <div className="tutor-card-grid">
+        {tutors.map((tutor) => {
+          const badges = tutorBadges(tutor);
+          return (
+            <article key={tutor.id} className="tutor-result-card">
+              <div className="tutor-card-top">
+                <Avatar user={tutor} />
+                <div className="tutor-card-identity">
+                  <h2>{tutor.name}</h2>
+                  <p>{tutor.subjects?.join(" • ")}</p>
+                  <p className="tutor-rating"><Star size={13} fill="currentColor" /> {tutor.rating} ({tutor.reviewCount} reviews)</p>
+                  <p className="tutor-experience">{tutorExperience(tutor)}</p>
+                </div>
+                {badges.length ? (
+                  <div className="tutor-card-badges">
+                    {badges.map((badge) => <span key={badge} className="search-badge">{badge}</span>)}
+                  </div>
+                ) : null}
+              </div>
+              <div className="tutor-card-divider" />
+              <div className="tutor-card-actions">
+                <div>
+                  <p className="tutor-price">${tutor.price}/hr</p>
+                  <p className="tutor-rate-label">per hour</p>
+                </div>
+                <Link className="btn btn-primary tutor-profile-link" to={`/tutors/${tutor.id}`}>View Profile</Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      {!isLoading && tutors.length === 0 ? (
+        <section className="empty-state">
+          <h2>No tutors match these filters</h2>
+          <p>Try broadening the subject, price, rating, availability, or language filters.</p>
+        </section>
+      ) : null}
+    </div>
   );
 }
-
 function BookingWidget({ tutor, availability }) {
   const [slotId, setSlotId] = useState(availability?.[0]?.id || "");
   const [mode, setMode] = useState("Online");
