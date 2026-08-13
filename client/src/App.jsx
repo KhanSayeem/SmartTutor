@@ -1873,7 +1873,15 @@ function StudentProgressPage() {
         <SimpleStat value={stats?.averageRating ? `${stats.averageRating}★` : "—"} label="Avg. Rating Given" tone="var(--warning)" />
       </div>
       <h2 className="section-heading">Progress by Subject</h2>
-      <div className="subject-progress-grid">
+      <div
+        className="subject-progress-grid"
+        role="img"
+        aria-label={
+          (data?.subjects || []).length
+            ? `Progress by subject: ${data.subjects.map((subject) => `${subject.subject} ${subject.progress}%`).join(", ")}`
+            : "No subject progress yet"
+        }
+      >
         {(data?.subjects || []).map((subject) => (
           <div key={subject.subject} className="subject-progress-card">
             <div className="subject-progress-row">
@@ -1922,7 +1930,15 @@ function EarningsPage() {
       <div className="earnings-panels">
         <section className="earnings-chart-card">
           <h2 className="section-heading">Monthly Earnings</h2>
-          <div className="earnings-chart-bars">
+          <div
+            className="earnings-chart-bars"
+            role="img"
+            aria-label={
+              (data?.monthly || []).length
+                ? `Monthly earnings: ${data.monthly.map((item) => `${item.month} $${item.amount}`).join(", ")}`
+                : "No paid sessions yet"
+            }
+          >
             {(data?.monthly || []).map((item) => (
               <div key={item.key} className="earnings-bar-col">
                 <span className="earnings-bar-value">${item.amount}</span>
