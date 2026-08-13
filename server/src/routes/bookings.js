@@ -86,13 +86,13 @@ bookingsRouter.patch("/:id/accept", permit("tutor"), async (req, res, next) => {
     if (!booking) throw notFound("Booking not found");
     if (booking.tutorId !== req.user.id) throw forbidden("Only the assigned tutor can accept this booking");
     booking.status = "confirmed";
-    store.createConversation([booking.studentId, booking.tutorId], booking.id);
+    const conversation = store.createConversation([booking.studentId, booking.tutorId], booking.id);
     await sendMail({
       to: store.findUser(booking.studentId).email,
       subject: "SmartTutor booking confirmed",
       text: `Your ${booking.subject} session ${booking.reference} is confirmed.`
     });
-    res.json({ booking: store.shapeBooking(booking) });
+    res.json({ booking: store.shapeBooking(booking), conversationId: conversation.id });
   } catch (error) {
     next(error);
   }

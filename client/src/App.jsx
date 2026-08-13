@@ -17,7 +17,7 @@ import {
   User,
   Wallet
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.js";
 import { useAuthStore } from "./authStore.js";
@@ -1222,14 +1222,95 @@ function BookingsPage() {
   );
 }
 
+const MESSAGE_PAGE_SIZE = 20;
+const CHAT_POLL_MS = 4000;
+const TYPING_POLL_MS = 1000;
+
 function MessagesPage() {
   const [selected, setSelected] = useState(null);
   const [body, setBody] = useState("");
+  const [olderPages, setOlderPages] = useState([]);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const scrollRef = useRef(null);
+  const bottomRef = useRef(null);
+  const pendingScrollRef = useRef(null);
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const conversations = useQuery({ queryKey: ["conversations"], queryFn: () => api("/messages/conversations") });
+
+  // No websocket server exists, so "live" is a short poll. The same interval
+  // keeps presence fresh, which is what #42 needs within a few seconds.
+  const conversations = useQuery({
+    queryKey: ["conversations"],
+    queryFn: () => api("/messages/conversations"),
+    refetchInterval: CHAT_POLL_MS
+  });
   const activeId = selected || conversations.data?.conversations?.[0]?.id;
-  const messages = useQuery({ queryKey: ["messages", activeId], queryFn: () => api(`/messages/conversations/${activeId}/messages`), enabled: Boolean(activeId) });
+  const activeConversation = (conversations.data?.conversations || []).find((item) => item.id === activeId);
+  const messages = useQuery({
+    queryKey: ["messages", activeId],
+    queryFn: () => api(`/messages/conversations/${activeId}/messages?limit=${MESSAGE_PAGE_SIZE}`),
+    enabled: Boolean(activeId),
+    refetchInterval: CHAT_POLL_MS
+  });
+
+  const latest = useMemo(() => messages.data?.messages || [], [messages.data]);
+  const visibleMessages = useMemo(() => [...olderPages.flat(), ...latest], [olderPages, latest]);
+  const hasMore = olderPages.length ? olderPages[0].hasMoreBefore !== false : Boolean(messages.data?.hasMore);
+
+  // Typing has to surface within about a second, which is far tighter than the
+  // inbox poll, so it gets its own small endpoint on a 1s loop.
+  const typingState = useQuery({
+    queryKey: ["typing", activeId],
+    queryFn: () => api(`/messages/conversations/${activeId}/typing`),
+    enabled: Boolean(activeId),
+    refetchInterval: TYPING_POLL_MS
+  });
+  const peerTyping = Boolean(typingState.data?.typing);
+  const peerOnline = typingState.data?.online ?? activeConversation?.participant?.online;
+
+  useEffect(() => {
+    setOlderPages([]);
+  }, [activeId]);
+
+  // Newest-message auto-scroll, and scroll-anchor restore after a page of older
+  // messages is prepended so the viewport does not jump.
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    if (pendingScrollRef.current !== null) {
+      node.scrollTop = node.scrollHeight - pendingScrollRef.current;
+      pendingScrollRef.current = null;
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [visibleMessages.length, activeId]);
+
+  const loadOlder = async () => {
+    const oldest = visibleMessages[0];
+    if (!oldest || isLoadingOlder) return;
+    setIsLoadingOlder(true);
+    pendingScrollRef.current = scrollRef.current?.scrollHeight || 0;
+    try {
+      const page = await api(`/messages/conversations/${activeId}/messages?limit=${MESSAGE_PAGE_SIZE}&before=${oldest.id}`);
+      const batch = page.messages || [];
+      batch.hasMoreBefore = page.hasMore;
+      if (batch.length) setOlderPages((current) => [batch, ...current]);
+      else pendingScrollRef.current = null;
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  };
+
+  const onScroll = (event) => {
+    if (event.target.scrollTop <= 0 && hasMore && !isLoadingOlder) loadOlder();
+  };
+
+  const typingMutation = useMutation({ mutationFn: () => api(`/messages/conversations/${activeId}/typing`, { method: "POST" }) });
+  const onBodyChange = (event) => {
+    setBody(event.target.value);
+    if (activeId && event.target.value.trim()) typingMutation.mutate();
+  };
+
   const sendMutation = useMutation({
     mutationFn: () => api(`/messages/conversations/${activeId}/messages`, { method: "POST", body: { body } }),
     onSuccess: () => {
@@ -1256,24 +1337,53 @@ function MessagesPage() {
             </button>
           ))}
         </aside>
-        <section className="card flex min-h-[620px] flex-col overflow-hidden">
-          <div className="border-b border-surface-border p-4 font-extrabold">Chat Window</div>
-          <div className="flex-1 space-y-3 overflow-y-auto bg-surface-shell p-4">
-            {(messages.data?.messages || []).map((message) => {
+        <section className="chat-pane">
+          <header className="chat-header">
+            {activeConversation ? (
+              <>
+                <span className="chat-header-avatar">
+                  {activeConversation.participant?.avatarUrl
+                    ? <img className="my-profile-avatar-img" src={activeConversation.participant.avatarUrl} alt="" />
+                    : activeConversation.participant?.avatar || activeConversation.participant?.name?.slice(0, 2).toUpperCase()}
+                </span>
+                <div>
+                  <p className="chat-header-name">{activeConversation.participant?.name}</p>
+                  <p className={cx("chat-presence", peerOnline && "is-online")}>
+                    <span className="chat-presence-dot" />
+                    {peerOnline ? "Online" : "Offline"}
+                  </p>
+                </div>
+              </>
+            ) : <p className="chat-header-name">No conversation selected</p>}
+          </header>
+          <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
+            {hasMore ? (
+              <button className="chat-load-more" type="button" disabled={isLoadingOlder} onClick={loadOlder}>
+                {isLoadingOlder ? "Loading..." : "Load older messages"}
+              </button>
+            ) : null}
+            {visibleMessages.map((message) => {
               const mine = message.senderId === user.id;
               return (
-                <div key={message.id} className={cx("flex", mine ? "justify-end" : "justify-start")}>
-                  <div className={cx("max-w-[78%] rounded-2xl p-3 text-sm", mine ? "bg-brand-blue text-white" : "bg-white text-slate-700")}>
-                    <p>{message.body}</p>
-                    {!mine ? <button className="mt-2 text-xs font-bold text-status-danger" onClick={() => flagMutation.mutate(message.id)}>Flag</button> : null}
-                  </div>
+                <div key={message.id} className={cx("chat-row", mine && "is-mine")}>
+                  <div className={cx("chat-bubble", mine && "is-mine")}>{message.body}</div>
+                  <p className="chat-meta">
+                    {mine ? "Delivered ✓✓" : (
+                      <button className="chat-flag" type="button" onClick={() => flagMutation.mutate(message.id)}>Flag to admin</button>
+                    )}
+                  </p>
                 </div>
               );
             })}
+            {peerTyping ? <div className="chat-typing" aria-label="Typing"><span /><span /><span /></div> : null}
+            <div ref={bottomRef} />
           </div>
-          <form className="flex gap-2 border-t border-surface-border p-4" onSubmit={(event) => { event.preventDefault(); if (body.trim()) sendMutation.mutate(); }}>
-            <input className="field" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Type a message" />
-            <Button><Send size={17} /> Send</Button>
+          <form className="chat-composer" onSubmit={(event) => { event.preventDefault(); if (body.trim()) sendMutation.mutate(); }}>
+            <div className="chat-input-wrap">
+              <input className="chat-input" value={body} onChange={onBodyChange} placeholder="Type a message..." />
+              <button className="chat-attach" type="button" title="Attachments are tracked in issue #47" aria-label="Attach a file">📎</button>
+            </div>
+            <button className="chat-send" type="submit" disabled={!body.trim() || sendMutation.isPending}>Send →</button>
           </form>
         </section>
       </div>

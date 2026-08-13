@@ -1540,3 +1540,251 @@ th {
     padding-bottom: 12px;
   }
 }
+
+/* Chat window — Figma nodes 10:152 / 10:153 / 10:159 / 10:175 / 10:177 */
+.chat-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 620px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--shell);
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 70px;
+  flex-shrink: 0;
+  padding: 0 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-header-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--info-bg);
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.chat-header-name {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.chat-presence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chat-presence.is-online {
+  color: var(--success);
+}
+
+.chat-presence-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--placeholder);
+}
+
+.chat-presence.is-online .chat-presence-dot {
+  background: var(--success);
+}
+
+.chat-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  padding: 30px 40px;
+  background: var(--shell);
+}
+
+.chat-load-more {
+  align-self: center;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  padding: 6px 16px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: min(600px, 78%);
+}
+
+.chat-row.is-mine {
+  align-items: flex-end;
+  align-self: flex-end;
+}
+
+.chat-bubble {
+  min-height: 52px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.chat-bubble.is-mine {
+  background: var(--blue);
+  color: white;
+}
+
+.chat-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.chat-flag {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chat-flag:hover {
+  color: var(--danger);
+}
+
+.chat-typing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 80px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.chat-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: chat-typing-bounce 1.2s infinite ease-in-out;
+}
+
+.chat-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chat-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes chat-typing-bounce {
+  0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.chat-composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 76px;
+  flex-shrink: 0;
+  padding: 0 24px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
+.chat-input-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.chat-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 48px 0 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--shell);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.chat-input::placeholder {
+  color: #b2b8c2;
+}
+
+.chat-input:focus {
+  border-color: var(--blue);
+}
+
+.chat-attach {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-send {
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--blue);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-send:disabled {
+  background: var(--placeholder);
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .chat-scroll {
+    padding: 20px 16px;
+  }
+
+  .chat-header,
+  .chat-composer {
+    padding: 0 14px;
+  }
+
+  .chat-row {
+    max-width: 88%;
+  }
+}

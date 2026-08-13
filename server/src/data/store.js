@@ -335,6 +335,26 @@ export const store = {
   ]),
   // Derive from the highest reference in play; a length-based counter repeats
   // itself as soon as the booking list is filtered or trimmed.
+  // A user counts as online while a request from them landed inside this
+  // window. The client polls every 4s, so a closed tab reads offline in ~12s.
+  presenceWindowMs: 12000,
+  typingWindowMs: 5000,
+  typing: new Map(),
+  markSeen(userId) {
+    this.presence.set(userId, { online: true, updatedAt: new Date().toISOString() });
+  },
+  isOnline(userId) {
+    const entry = this.presence.get(userId);
+    if (!entry?.updatedAt) return false;
+    return Date.now() - new Date(entry.updatedAt).getTime() <= this.presenceWindowMs;
+  },
+  markTyping(conversationId, userId) {
+    this.typing.set(`${conversationId}:${userId}`, Date.now());
+  },
+  isTyping(conversationId, userId) {
+    const at = this.typing.get(`${conversationId}:${userId}`);
+    return Boolean(at) && Date.now() - at <= this.typingWindowMs;
+  },
   nextReference() {
     const highest = this.bookings.reduce((max, booking) => {
       const value = Number(String(booking.reference || "").replace("ST-", ""));
@@ -377,17 +397,36 @@ export const store = {
   findUser(id) {
     return this.users.find((user) => user.id === id);
   },
-  createConversation(participantIds, bookingId) {
-    const existing = this.conversations.find(
-      (conversation) =>
-        conversation.bookingId === bookingId ||
-        participantIds.every((id) => conversation.participantIds.includes(id))
-    );
-    if (existing) return existing;
+  // Match on the booking first and on an exact participant set second. The old
+  // rule OR'd the two, so any thread that merely contained both people won —
+  // accepting a second booking between the same pair returned the first
+  // booking's thread, and a missing bookingId matched an unrelated pair's.
+  createConversation(participantIds, bookingId = null) {
+    const ids = [...new Set(participantIds)].filter(Boolean).sort();
+    if (ids.length < 2) throw new Error("A conversation needs at least two distinct participants");
+
+    const sameParticipants = (conversation) => {
+      const other = [...new Set(conversation.participantIds)].sort();
+      return other.length === ids.length && other.every((id, index) => id === ids[index]);
+    };
+
+    if (bookingId) {
+      const byBooking = this.conversations.find(
+        (conversation) => conversation.bookingId === bookingId && sameParticipants(conversation)
+      );
+      if (byBooking) return byBooking;
+    }
+
+    const unbound = this.conversations.find((conversation) => sameParticipants(conversation) && !conversation.bookingId);
+    if (unbound) {
+      if (bookingId) unbound.bookingId = bookingId;
+      return unbound;
+    }
+
     const conversation = {
       id: `conv-${nanoid(8)}`,
-      participantIds,
-      bookingId,
+      participantIds: ids,
+      bookingId: bookingId || null,
       unreadBy: [],
       updatedAt: new Date().toISOString()
     };

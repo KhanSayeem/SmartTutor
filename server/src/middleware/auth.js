@@ -22,6 +22,9 @@ export function requireAuth(req, res, next) {
       return res.status(401).json({ message: "Account is unavailable" });
     }
     req.user = user;
+    // Every authenticated request doubles as a presence heartbeat, so an idle
+    // tab that keeps polling stays online and a closed one goes stale on its own.
+    store.markSeen(user.id);
     next();
   } catch (_error) {
     res.status(401).json({ message: "Invalid or expired token" });
