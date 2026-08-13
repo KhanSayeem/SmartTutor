@@ -1,13 +1,17 @@
 import bcrypt from "bcryptjs";
 import { Router } from "express";
+import multer from "multer";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { store } from "../data/store.js";
 import { requireAuth, signToken } from "../middleware/auth.js";
 import { sendMail } from "../services/mailer.js";
+import { saveUploadedFile } from "../services/storage.js";
 import { badRequest } from "../utils/errors.js";
+import { maxAvatarSize, validateAvatar } from "../utils/fileValidation.js";
 
 export const authRouter = Router();
+const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: maxAvatarSize } });
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -108,10 +112,44 @@ authRouter.get("/me", requireAuth, (req, res) => {
   res.json({ user: store.userPublic(req.user) });
 });
 
-authRouter.patch("/me", requireAuth, (req, res) => {
-  const allowed = ["name", "phone", "subjects", "bio", "qualifications", "languages", "price", "availabilitySummary"];
-  for (const field of allowed) {
-    if (req.body[field] !== undefined) req.user[field] = req.body[field];
+const shortList = z.array(z.string().trim().min(1)).max(10);
+
+// Everyone may edit these. Anything tutor-specific lives in the extended schema
+// below, so a student PATCHing `price` is rejected instead of silently stored.
+const baseProfileSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  phone: z.string().trim().max(20).regex(/^[+0-9 ()-]*$/, "Phone may only contain digits, spaces, and + ( ) -"),
+  subjects: shortList
+});
+
+const tutorProfileSchema = baseProfileSchema.extend({
+  bio: z.string().trim().max(1000),
+  languages: shortList,
+  qualifications: shortList,
+  price: z.number().int().min(5).max(500),
+  availabilitySummary: z.string().trim().max(200)
+});
+
+authRouter.patch("/me", requireAuth, (req, res, next) => {
+  try {
+    const schema = req.user.role === "tutor" ? tutorProfileSchema : baseProfileSchema;
+    const payload = schema.partial().strict().parse(req.body);
+    Object.assign(req.user, payload);
+    res.json({ user: store.userPublic(req.user) });
+  } catch (error) {
+    next(error);
   }
-  res.json({ user: store.userPublic(req.user) });
+});
+
+authRouter.post("/me/avatar", requireAuth, avatarUpload.single("avatar"), async (req, res, next) => {
+  try {
+    const validationError = validateAvatar(req.file);
+    if (validationError) return res.status(400).json({ message: validationError });
+    const saved = await saveUploadedFile(req.file, `avatars/${req.user.id}`);
+    req.user.avatarUrl = saved.url;
+    req.user.avatarPath = saved.storagePath;
+    res.status(201).json({ user: store.userPublic(req.user) });
+  } catch (error) {
+    next(error);
+  }
 });

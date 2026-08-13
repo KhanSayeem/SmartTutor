@@ -17,7 +17,7 @@ import {
   User,
   Wallet
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.js";
 import { useAuthStore } from "./authStore.js";
@@ -79,6 +79,7 @@ function Badge({ children, tone = "info" }) {
 }
 
 function Avatar({ user }) {
+  if (user?.avatarUrl) return <img className="avatar avatar-image" src={user.avatarUrl} alt="" />;
   return <span className="avatar">{user?.avatar || user?.name?.slice(0, 2).toUpperCase() || "ST"}</span>;
 }
 
@@ -191,6 +192,9 @@ function AppShell({ children }) {
                 </div>
                 <button className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold hover:bg-surface-shell" onClick={() => navigate("/profile")}>
                   <User size={16} /> My Profile
+                </button>
+                <button className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold hover:bg-surface-shell" onClick={() => navigate("/profile/edit")}>
+                  <ShieldCheck size={16} /> Account Settings
                 </button>
                 <button className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold hover:bg-surface-shell" onClick={() => navigate("/portal-select")}>
                   <LayoutDashboard size={16} /> Switch Portal
@@ -433,39 +437,206 @@ function PortalSelectPage() {
   );
 }
 
+function ProfileDetail({ label, value }) {
+  if (value === undefined || value === null || value === "" || (Array.isArray(value) && !value.length)) return null;
+  return (
+    <div className="my-profile-detail-row">
+      <dt>{label}</dt>
+      <dd>{Array.isArray(value) ? value.join(", ") : value}</dd>
+    </div>
+  );
+}
+
+// No Figma frame exists for My Profile, so the header geometry is borrowed from
+// the Tutor Profile header (node 9:121) and every value comes from the tokens.
 function ProfilePage() {
   const { user, updateUser } = useAuthStore();
-  const [form, setForm] = useState({
-    name: user.name || "",
-    phone: user.phone || "",
-    bio: user.bio || "",
-    price: user.price || "",
-    subjects: (user.subjects || []).join(", ")
-  });
-  const mutation = useMutation({
-    mutationFn: () =>
-      api("/auth/me", {
-        method: "PATCH",
-        body: { ...form, price: form.price ? Number(form.price) : undefined, subjects: form.subjects.split(",").map((item) => item.trim()).filter(Boolean) }
-      }),
-    onSuccess: (data) => updateUser(data.user)
-  });
+  const { data } = useQuery({ queryKey: ["me"], queryFn: () => api("/auth/me") });
+  const profile = data?.user || user;
+
+  useEffect(() => {
+    if (data?.user) updateUser(data.user);
+  }, [data, updateUser]);
 
   return (
     <>
-      <PageTitle title="My Profile" subtitle="Profile details persist through the auth API and feed role-specific screens." />
-      <section className="card max-w-3xl p-6">
-        <ErrorNotice error={mutation.error} />
-        {mutation.isSuccess ? <div className="mb-4 rounded-lg bg-surface-success p-3 text-sm font-bold text-status-success">Profile updated.</div> : null}
-        <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}>
-          <Field label="Name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-          <Field label="Phone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-          <Field label="Subjects" value={form.subjects} onChange={(event) => setForm({ ...form, subjects: event.target.value })} />
-          {user.role === "tutor" ? <Field label="Hourly rate" type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /> : null}
-          <TextArea label="Bio" value={form.bio} onChange={(event) => setForm({ ...form, bio: event.target.value })} />
-          <Button disabled={mutation.isPending}>Save Profile</Button>
-        </form>
+      <PageTitle title="My Profile" subtitle="Your account details, as other people on SmartTutor see them." />
+      <section className="card my-profile-header">
+        <div className="my-profile-avatar">
+          {profile.avatarUrl ? <img className="my-profile-avatar-img" src={profile.avatarUrl} alt="" /> : profile.avatar || profile.name?.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="my-profile-identity">
+          <h2 className="my-profile-name">{profile.name}</h2>
+          <p className="my-profile-email">{profile.email}</p>
+          <p className="my-profile-meta">
+            {profile.role === "tutor" ? profile.subjects?.join(" • ") : `Joined ${profile.joinedAt}`}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="student">{profile.role}</Badge>
+            {profile.verified ? <Badge tone="success">Verified</Badge> : null}
+          </div>
+        </div>
+        <div className="my-profile-actions">
+          <Link className="btn btn-primary" to="/profile/edit">Edit Profile</Link>
+        </div>
       </section>
+      <section className="card my-profile-details">
+        <dl className="my-profile-detail-grid">
+          <ProfileDetail label="Phone" value={profile.phone} />
+          <ProfileDetail label="Subjects" value={profile.subjects} />
+          {profile.role === "tutor" ? (
+            <>
+              <ProfileDetail label="Languages" value={profile.languages} />
+              <ProfileDetail label="Hourly rate" value={profile.price ? `$${profile.price} / hour` : ""} />
+              <ProfileDetail label="Qualifications" value={profile.qualifications} />
+              <ProfileDetail label="Availability" value={profile.availabilitySummary} />
+              <ProfileDetail label="Bio" value={profile.bio} />
+            </>
+          ) : null}
+        </dl>
+      </section>
+    </>
+  );
+}
+
+const listToText = (value) => (value || []).join(", ");
+const textToList = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
+
+function validateProfileForm(form, role) {
+  const errors = {};
+  if (form.name.trim().length < 2) errors.name = "Name must be at least 2 characters";
+  if (form.name.trim().length > 80) errors.name = "Name must be 80 characters or fewer";
+  if (form.phone && !/^[+0-9 ()-]*$/.test(form.phone.trim())) errors.phone = "Phone may only contain digits, spaces, and + ( ) -";
+  if (form.phone.trim().length > 20) errors.phone = "Phone must be 20 characters or fewer";
+  if (role === "tutor") {
+    const price = Number(form.price);
+    if (!form.price || !Number.isInteger(price) || price < 5 || price > 500) errors.price = "Hourly rate must be a whole number between 5 and 500";
+    if (form.bio.trim().length > 1000) errors.bio = "Bio must be 1000 characters or fewer";
+    if (form.availabilitySummary.trim().length > 200) errors.availabilitySummary = "Availability must be 200 characters or fewer";
+  }
+  return errors;
+}
+
+function ProfileEditPage() {
+  const { user, updateUser } = useAuthStore();
+  const navigate = useNavigate();
+  const isTutor = user.role === "tutor";
+  const [form, setForm] = useState({
+    name: user.name || "",
+    phone: user.phone || "",
+    subjects: listToText(user.subjects),
+    languages: listToText(user.languages),
+    qualifications: listToText(user.qualifications),
+    availabilitySummary: user.availabilitySummary || "",
+    bio: user.bio || "",
+    price: user.price ?? ""
+  });
+  const [errors, setErrors] = useState({});
+  const [avatarError, setAvatarError] = useState("");
+
+  const setField = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const body = {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        subjects: textToList(form.subjects)
+      };
+      if (isTutor) {
+        Object.assign(body, {
+          languages: textToList(form.languages),
+          qualifications: textToList(form.qualifications),
+          availabilitySummary: form.availabilitySummary.trim(),
+          bio: form.bio.trim(),
+          price: Number(form.price)
+        });
+      }
+      return api("/auth/me", { method: "PATCH", body });
+    },
+    onSuccess: (data) => {
+      updateUser(data.user);
+      navigate("/profile");
+    },
+    onError: (error) => {
+      if (error?.details) setErrors((current) => ({ ...current, ...error.details }));
+    }
+  });
+
+  const avatarMutation = useMutation({
+    mutationFn: (file) => {
+      const body = new FormData();
+      body.append("avatar", file);
+      return api("/auth/me/avatar", { method: "POST", body });
+    },
+    onSuccess: (data) => updateUser(data.user)
+  });
+
+  const pickAvatar = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAvatarError("");
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setAvatarError("Only PNG, JPEG, and WebP images are allowed");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError("Image must be 2MB or smaller");
+      return;
+    }
+    avatarMutation.mutate(file);
+  };
+
+  const submit = (event) => {
+    event.preventDefault();
+    const nextErrors = validateProfileForm(form, user.role);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+    mutation.mutate();
+  };
+
+  return (
+    <>
+      <PageTitle title="Edit Profile" subtitle="Changes are validated on both sides and saved against your account." />
+      <form className="card profile-edit-form" onSubmit={submit} noValidate>
+        <ErrorNotice error={mutation.error} />
+        <section className="profile-edit-section">
+          <h2 className="profile-edit-section-title">Photo</h2>
+          <div className="profile-edit-avatar-row">
+            <div className="my-profile-avatar">
+              {user.avatarUrl ? <img className="my-profile-avatar-img" src={user.avatarUrl} alt="" /> : user.avatar || user.name?.slice(0, 2).toUpperCase()}
+            </div>
+            <label className="btn btn-secondary profile-edit-upload">
+              {avatarMutation.isPending ? "Uploading..." : "Upload photo"}
+              <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={pickAvatar} />
+            </label>
+            <p className="profile-edit-hint">PNG, JPEG, or WebP · max 2MB</p>
+          </div>
+          {avatarError ? <p className="profile-edit-error">{avatarError}</p> : null}
+          <ErrorNotice error={avatarMutation.error} />
+        </section>
+        <section className="profile-edit-section">
+          <h2 className="profile-edit-section-title">Account</h2>
+          <Field label="Full name" value={form.name} onChange={setField("name")} error={errors.name} />
+          <Field label="Email" value={user.email} readOnly disabled />
+          <Field label="Phone" value={form.phone} onChange={setField("phone")} error={errors.phone} />
+          <Field label="Subjects" value={form.subjects} onChange={setField("subjects")} error={errors.subjects} />
+        </section>
+        {isTutor ? (
+          <section className="profile-edit-section">
+            <h2 className="profile-edit-section-title">Tutor details</h2>
+            <Field label="Languages" value={form.languages} onChange={setField("languages")} error={errors.languages} />
+            <Field label="Hourly rate" type="number" value={form.price} onChange={setField("price")} error={errors.price} />
+            <Field label="Qualifications" value={form.qualifications} onChange={setField("qualifications")} error={errors.qualifications} />
+            <Field label="Availability" value={form.availabilitySummary} onChange={setField("availabilitySummary")} error={errors.availabilitySummary} />
+            <TextArea label="Bio" value={form.bio} onChange={setField("bio")} />
+          </section>
+        ) : null}
+        <footer className="profile-edit-footer">
+          <Link className="btn btn-neutral" to="/profile">Cancel</Link>
+          <Button disabled={mutation.isPending}>{mutation.isPending ? "Saving..." : "Save Changes"}</Button>
+        </footer>
+      </form>
     </>
   );
 }
@@ -1376,6 +1547,7 @@ function App() {
       <Route path="/reset-password/:token" element={<ResetPage />} />
       <Route path="/portal-select" element={<PortalSelectPage />} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/profile/edit" element={<ProtectedRoute><ProfileEditPage /></ProtectedRoute>} />
       <Route path="/search" element={<ProtectedRoute roles={["student"]}><TutorSearchPage /></ProtectedRoute>} />
       <Route path="/tutors/:id" element={<ProtectedRoute roles={["student"]}><TutorProfilePage /></ProtectedRoute>} />
       <Route path="/book/:id" element={<ProtectedRoute roles={["student"]}><BookSessionPage /></ProtectedRoute>} />
