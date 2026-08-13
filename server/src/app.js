@@ -10,6 +10,15 @@ import { messagesRouter } from "./routes/messages.js";
 import { progressRouter } from "./routes/progress.js";
 import { tutorsRouter } from "./routes/tutors.js";
 
+// LIMIT_FILE_SIZE errors carry the field name but not the configured limit
+// that tripped, and different upload fields use different limits (avatars:
+// 2MB, materials/message attachments: 50MB) -- this maps the field back to
+// the right human message instead of guessing a single size for all of them.
+const fileSizeMessageByField = {
+  avatar: "Image must be 2MB or smaller",
+  file: "File must be 50MB or smaller"
+};
+
 export function createApp() {
   const app = express();
 
@@ -49,7 +58,8 @@ export function createApp() {
     // (and its own validateUpload() 400) ever runs, so it previously fell
     // through to the generic 500 branch below.
     if (error instanceof multer.MulterError) {
-      const message = error.code === "LIMIT_FILE_SIZE" ? "File must be 50MB or smaller" : error.message;
+      const message =
+        error.code === "LIMIT_FILE_SIZE" ? fileSizeMessageByField[error.field] || "Uploaded file is too large" : error.message;
       return res.status(400).json({ message });
     }
 

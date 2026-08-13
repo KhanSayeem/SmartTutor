@@ -34,6 +34,15 @@ function cx(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
+// Uploads made without Supabase Storage configured return a local
+// `smarttutor://...` placeholder scheme (see server/src/services/storage.js)
+// instead of a real file URL. Browsers can't load that as an <img src>, so
+// every avatar render site must fall back to initials for it, same as the
+// materials/message-attachment download links already do for their own urls.
+function isRealFileUrl(url) {
+  return /^https?:\/\//.test(url || "");
+}
+
 function useEscapeToClose(onClose) {
   useEffect(() => {
     const handler = (event) => {
@@ -89,7 +98,7 @@ function Badge({ children, tone = "info" }) {
 }
 
 function Avatar({ user }) {
-  if (user?.avatarUrl) return <img className="avatar avatar-image" src={user.avatarUrl} alt="" />;
+  if (isRealFileUrl(user?.avatarUrl)) return <img className="avatar avatar-image" src={user.avatarUrl} alt="" />;
   return <span className="avatar">{user?.avatar || user?.name?.slice(0, 2).toUpperCase() || "ST"}</span>;
 }
 
@@ -473,7 +482,7 @@ function ProfilePage() {
       <PageTitle title="My Profile" subtitle="Your account details, as other people on SmartTutor see them." />
       <section className="card my-profile-header">
         <div className="my-profile-avatar">
-          {profile.avatarUrl ? <img className="my-profile-avatar-img" src={profile.avatarUrl} alt="" /> : profile.avatar || profile.name?.slice(0, 2).toUpperCase()}
+          {isRealFileUrl(profile.avatarUrl) ? <img className="my-profile-avatar-img" src={profile.avatarUrl} alt="" /> : profile.avatar || profile.name?.slice(0, 2).toUpperCase()}
         </div>
         <div className="my-profile-identity">
           <h2 className="my-profile-name">{profile.name}</h2>
@@ -614,7 +623,7 @@ function ProfileEditPage() {
           <h2 className="profile-edit-section-title">Photo</h2>
           <div className="profile-edit-avatar-row">
             <div className="my-profile-avatar">
-              {user.avatarUrl ? <img className="my-profile-avatar-img" src={user.avatarUrl} alt="" /> : user.avatar || user.name?.slice(0, 2).toUpperCase()}
+              {isRealFileUrl(user.avatarUrl) ? <img className="my-profile-avatar-img" src={user.avatarUrl} alt="" /> : user.avatar || user.name?.slice(0, 2).toUpperCase()}
             </div>
             <label className="btn btn-secondary profile-edit-upload">
               {avatarMutation.isPending ? "Uploading..." : "Upload photo"}
@@ -1603,7 +1612,7 @@ function MessagesPage() {
             {activeConversation ? (
               <>
                 <span className="chat-header-avatar">
-                  {activeConversation.participant?.avatarUrl
+                  {isRealFileUrl(activeConversation.participant?.avatarUrl)
                     ? <img className="my-profile-avatar-img" src={activeConversation.participant.avatarUrl} alt="" />
                     : activeConversation.participant?.avatar || activeConversation.participant?.name?.slice(0, 2).toUpperCase()}
                 </span>
