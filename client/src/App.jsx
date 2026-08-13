@@ -940,17 +940,31 @@ function BookingSteps({ current }) {
   );
 }
 
+function to12Hour(value) {
+  const [hour, minute] = value.split(":").map(Number);
+  const suffix = hour >= 12 ? "PM" : "AM";
+  return `${((hour + 11) % 12) + 1}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
 function formatBookingDate(iso) {
   const date = parseISODate(iso);
   return date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
+// Figma node 10:86 uses "Today"/"Tomorrow" for near dates and falls back to a
+// short weekday + day + month otherwise.
+function formatRelativeDate(iso) {
+  const target = parseISODate(iso);
+  const today = new Date();
+  const todayIso = toISODate(today);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (iso === todayIso) return "Today";
+  if (iso === toISODate(tomorrow)) return "Tomorrow";
+  return target.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+}
+
 function formatBookingTime(startTime, endTime) {
-  const to12Hour = (value) => {
-    const [hour, minute] = value.split(":").map(Number);
-    const suffix = hour >= 12 ? "PM" : "AM";
-    return `${((hour + 11) % 12) + 1}:${String(minute).padStart(2, "0")} ${suffix}`;
-  };
   const [startHour, startMinute] = startTime.split(":").map(Number);
   const [endHour, endMinute] = endTime.split(":").map(Number);
   const minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
@@ -1188,36 +1202,241 @@ function TutorProfilePage() {
   );
 }
 
-function BookingsPage() {
-  const [status, setStatus] = useState("all");
+const BOOKING_TABS = [
+  { value: "confirmed", label: "Upcoming" },
+  { value: "pending", label: "Pending" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" }
+];
+
+// Figma node 10:72. Tab counts must come from the full booking list, not the
+// tab-filtered one -- computing them from an already-filtered array is why
+// switching tabs used to zero out every other tab's count.
+function BookingTabs({ counts, active, onChange }) {
+  return (
+    <div className="booking-tabs" role="tablist" aria-label="Booking status">
+      {BOOKING_TABS.map((tab) => (
+        <button
+          key={tab.value}
+          type="button"
+          role="tab"
+          aria-selected={active === tab.value}
+          className={cx("booking-tab", active === tab.value && "is-active")}
+          onClick={() => onChange(tab.value)}
+        >
+          <span className="booking-tab-label">
+            {tab.label}
+            {active === tab.value ? <span className="booking-tab-underline" /> : null}
+          </span>
+          <span className="booking-tab-count">{counts[tab.value] || 0}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Figma node 10:86.
+function BookingRow({ booking, onReschedule, onCancel }) {
+  const canManage = booking.status === "pending" || booking.status === "confirmed";
+  return (
+    <article className="booking-row">
+      <Avatar user={booking.tutor} />
+      <div className="booking-row-info">
+        <p className="booking-row-name">{booking.tutor.name}</p>
+        <p className="booking-row-meta">{booking.subject} • {booking.mode}</p>
+        <p className="booking-row-time">{formatRelativeDate(booking.date)}, {to12Hour(booking.startTime)} – {to12Hour(booking.endTime)}</p>
+      </div>
+      <StatusBadge status={booking.status} />
+      {canManage ? (
+        <div className="booking-row-actions">
+          <button type="button" className="booking-row-btn" onClick={onReschedule}>Reschedule</button>
+          <button type="button" className="booking-row-btn is-danger" onClick={onCancel}>Cancel</button>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+// Reuses the calendar/slot/mode picker from BookingWidget (Figma 9:163), per
+// issue #31's "reusing the calendar picker" instruction.
+function RescheduleModal({ booking, onClose }) {
   const queryClient = useQueryClient();
-  const { data } = useQuery({ queryKey: ["bookings", status], queryFn: () => api(`/bookings?status=${status}`) });
-  const mutation = useMutation({
-    mutationFn: ({ id, action }) => api(`/bookings/${id}/${action}`, { method: "PATCH", body: { reason: "Managed from My Bookings" } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bookings"] })
+  const { data } = useQuery({
+    queryKey: ["tutor-availability", booking.tutorId],
+    queryFn: () => api(`/tutors/${booking.tutorId}/availability`)
   });
-  const rows = useMemo(() => data?.bookings || [], [data?.bookings]);
-  const counts = useMemo(() => {
-    const all = rows.length;
-    return { all, pending: rows.filter((b) => b.status === "pending").length, confirmed: rows.filter((b) => b.status === "confirmed").length, completed: rows.filter((b) => b.status === "completed").length, cancelled: rows.filter((b) => b.status === "cancelled").length };
-  }, [rows]);
+  const slotsByDate = useMemo(() => {
+    const map = new Map();
+    for (const slot of data?.slots || []) {
+      if (!map.has(slot.date)) map.set(slot.date, []);
+      map.get(slot.date).push(slot);
+    }
+    return map;
+  }, [data]);
+  const days = useMemo(() => buildCalendarDays([...slotsByDate.keys()]), [slotsByDate]);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [slotId, setSlotId] = useState("");
+  const [mode, setMode] = useState(booking.mode);
+  const daySlots = slotsByDate.get(selectedDate) || [];
+  const selected = daySlots.find((slot) => slot.id === slotId) || daySlots[0];
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      api(`/bookings/${booking.id}/reschedule`, {
+        method: "PATCH",
+        body: { date: selected.date, startTime: selected.startTime, endTime: selected.endTime, mode }
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      onClose();
+    }
+  });
+
+  const pickDate = (iso) => {
+    setSelectedDate(iso);
+    setSlotId(slotsByDate.get(iso)?.[0]?.id || "");
+  };
+
+  return (
+    <div className="booking-modal-scrim">
+      <div className="reschedule-modal">
+        <h3 className="reschedule-modal-title">Reschedule Session</h3>
+        <p className="reschedule-modal-subtitle">{booking.subject} with {booking.tutor.name}</p>
+        <ErrorNotice error={mutation.error} />
+        <p className="booking-label">Select a new date</p>
+        <div className="booking-calendar">
+          <div className="booking-weekdays">
+            {WEEKDAYS.map((day) => <span key={day} className="booking-weekday">{day}</span>)}
+          </div>
+          <div className="booking-days">
+            {days.map((day) => {
+              const isAvailable = slotsByDate.has(day.iso);
+              const isSelected = isAvailable && day.iso === selectedDate;
+              return (
+                <button
+                  key={day.iso}
+                  type="button"
+                  disabled={!isAvailable}
+                  aria-pressed={isSelected}
+                  className={cx("booking-day", isAvailable && "is-available", isSelected && "is-selected")}
+                  onClick={() => pickDate(day.iso)}
+                >
+                  <span className="booking-day-number">{day.label}</span>
+                  {isAvailable ? <span className="booking-day-dot" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {daySlots.length ? (
+          <>
+            <p className="booking-label">Available times</p>
+            <div className="booking-chips">
+              {daySlots.map((slot) => (
+                <button
+                  key={slot.id}
+                  type="button"
+                  className={cx("booking-chip", selected?.id === slot.id && "is-active")}
+                  onClick={() => setSlotId(slot.id)}
+                >
+                  {slot.startTime}–{slot.endTime}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : slotsByDate.size === 0 ? (
+          <p className="text-sm text-slate-500">This tutor has no other open slots right now.</p>
+        ) : null}
+        <p className="booking-label">Session type</p>
+        <div className="booking-modes">
+          {[["Online", "🖥"], ["In-Person", "📍"]].map(([item, icon]) => (
+            <button
+              key={item}
+              type="button"
+              className={cx("booking-mode", mode === item && "is-active")}
+              onClick={() => setMode(item)}
+            >
+              <span aria-hidden="true">{icon}</span> {item}
+            </button>
+          ))}
+        </div>
+        <div className="reschedule-modal-actions">
+          <button type="button" className="btn btn-neutral" onClick={onClose}>Keep current time</button>
+          <button type="button" className="btn btn-primary" disabled={!selected || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? "Saving..." : "Confirm New Time"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CancelModal({ booking, onClose }) {
+  const [reason, setReason] = useState("");
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () => api(`/bookings/${booking.id}/cancel`, { method: "PATCH", body: { reason: reason.trim() || "Cancelled by student" } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      onClose();
+    }
+  });
+  return (
+    <div className="booking-modal-scrim">
+      <div className="cancel-modal">
+        <h3 className="reschedule-modal-title">Cancel Session</h3>
+        <p className="reschedule-modal-subtitle">{booking.subject} with {booking.tutor.name} · {booking.date}</p>
+        <ErrorNotice error={mutation.error} />
+        <TextArea
+          label="Reason (optional)"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Let the tutor know why you're cancelling"
+        />
+        <div className="reschedule-modal-actions">
+          <button type="button" className="btn btn-neutral" onClick={onClose}>Keep Booking</button>
+          <button type="button" className="btn btn-danger" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? "Cancelling..." : "Confirm Cancellation"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingsPage() {
+  const [status, setStatus] = useState("confirmed");
+  const [rescheduling, setRescheduling] = useState(null);
+  const [cancelling, setCancelling] = useState(null);
+  const { data } = useQuery({ queryKey: ["bookings"], queryFn: () => api("/bookings?status=all") });
+  const all = useMemo(() => data?.bookings || [], [data]);
+  const counts = useMemo(
+    () => ({
+      confirmed: all.filter((b) => b.status === "confirmed").length,
+      pending: all.filter((b) => b.status === "pending").length,
+      completed: all.filter((b) => b.status === "completed").length,
+      cancelled: all.filter((b) => b.status === "cancelled").length
+    }),
+    [all]
+  );
+  const rows = useMemo(() => all.filter((b) => b.status === status), [all, status]);
   return (
     <>
       <PageTitle title="My Bookings" subtitle="Manage upcoming, pending, completed, and cancelled sessions." />
-      <Tabs tabs={["all", "pending", "confirmed", "completed", "cancelled"].map((value) => ({ value, label: value, count: counts[value] }))} active={status} onChange={setStatus} />
-      <div className="grid gap-3">
+      <BookingTabs counts={counts} active={status} onChange={setStatus} />
+      <div className="booking-list">
         {rows.map((booking) => (
-          <article key={booking.id} className="card flex flex-wrap items-center justify-between gap-4 p-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2"><h2 className="font-extrabold">{booking.subject}</h2><StatusBadge status={booking.status} /></div>
-              <p className="mt-1 text-sm text-slate-500">{booking.tutor.name} · {booking.date} · {booking.startTime} · {booking.reference}</p>
-            </div>
-            <div className="flex gap-2">
-              {booking.status !== "cancelled" && booking.status !== "completed" ? <Button variant="danger" onClick={() => mutation.mutate({ id: booking.id, action: "cancel" })}>Cancel</Button> : null}
-            </div>
-          </article>
+          <BookingRow
+            key={booking.id}
+            booking={booking}
+            onReschedule={() => setRescheduling(booking)}
+            onCancel={() => setCancelling(booking)}
+          />
         ))}
+        {data && !rows.length ? <p className="text-sm text-slate-500">No {status} sessions.</p> : null}
       </div>
+      {rescheduling ? <RescheduleModal booking={rescheduling} onClose={() => setRescheduling(null)} /> : null}
+      {cancelling ? <CancelModal booking={cancelling} onClose={() => setCancelling(null)} /> : null}
     </>
   );
 }

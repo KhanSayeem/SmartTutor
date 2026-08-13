@@ -2009,3 +2009,194 @@ th {
     flex-direction: column;
   }
 }
+
+/* My Bookings — Figma nodes 10:72 (tabs) / 10:86 (row) */
+.booking-tabs {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  height: 48px;
+  margin: 0 -20px 24px;
+  padding: 0 20px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.booking-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.booking-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.booking-tab.is-active {
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.booking-tab-label {
+  position: relative;
+  display: block;
+  line-height: 18px;
+}
+
+.booking-tab-underline {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--blue);
+}
+
+.booking-tab-count {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 11px;
+  background: var(--shell);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.booking-tab.is-active .booking-tab-count {
+  background: var(--blue);
+  color: white;
+}
+
+.booking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.booking-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 24px;
+}
+
+.booking-row .avatar {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  font-size: 15px;
+}
+
+.booking-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.booking-row-name {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.booking-row-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.booking-row-time {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.booking-row-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.booking-row-btn {
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--shell);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.booking-row-btn.is-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Reschedule + Cancel modals */
+.reschedule-modal,
+.cancel-modal {
+  width: min(100%, 560px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--card);
+  border-radius: 16px;
+  padding: 28px 24px;
+}
+
+.cancel-modal {
+  width: min(100%, 420px);
+}
+
+.reschedule-modal-title {
+  margin: 0;
+  color: var(--navy);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.reschedule-modal-subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.reschedule-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+@media (max-width: 760px) {
+  .booking-row {
+    flex-wrap: wrap;
+  }
+
+  .booking-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
