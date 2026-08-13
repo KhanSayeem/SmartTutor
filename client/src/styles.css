@@ -6,7 +6,7 @@
   --blue: #2563eb;
   --navy: #1e3a5f;
   --text: #111827;
-  --muted: #6b7280;
+  --muted: #475569;
   --placeholder: #bfc7d1;
   --border: #e0e4e9;
   --shell: #f3f4f6;
@@ -25,8 +25,13 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
+  overflow-x: hidden;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   color: var(--text);
   background: var(--shell);
@@ -1006,7 +1011,7 @@ th {
 }
 
 .booking-chip {
-  height: 36px;
+  height: 44px;
   padding: 0 14px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
@@ -2147,7 +2152,7 @@ th {
 }
 
 .booking-row-btn {
-  height: 36px;
+  height: 44px;
   padding: 0 16px;
   border: 0;
   border-radius: 6px;

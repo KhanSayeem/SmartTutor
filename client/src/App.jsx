@@ -851,6 +851,7 @@ function BookingWidget({ tutor, availability }) {
                 type="button"
                 disabled={!isAvailable}
                 aria-pressed={isSelected}
+                aria-label={`${new Date(`${day.iso}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}${isAvailable ? "" : ", no sessions available"}`}
                 className={cx("booking-day", isAvailable && "is-available", isSelected && "is-selected")}
                 onClick={() => pickDate(day.iso)}
               >
@@ -1169,7 +1170,7 @@ function TutorProfilePage() {
   const { tutor, availability, reviews, reviewSummary } = data;
   return (
     <>
-      <div className="tutor-profile-page grid gap-10 lg:grid-cols-[minmax(0,700px)_540px]">
+      <div className="tutor-profile-page grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,700px)_540px]">
         <section className="card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex gap-4">
@@ -1623,7 +1624,7 @@ function TutorDashboardPage() {
   return (
     <>
       <PageTitle title="Tutor Dashboard" subtitle="Pending booking requests and today's confirmed schedule." />
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="card p-5">
           <h2 className="mb-4 text-xl font-extrabold">Pending Requests</h2>
           <div className="grid gap-3">
