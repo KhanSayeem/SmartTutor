@@ -4,7 +4,7 @@ import { z } from "zod";
 import { store } from "../data/store.js";
 import { permit, requireAuth } from "../middleware/auth.js";
 import { sendMail } from "../services/mailer.js";
-import { forbidden, notFound } from "../utils/errors.js";
+import { badRequest, forbidden, notFound } from "../utils/errors.js";
 
 export const bookingsRouter = Router();
 
@@ -120,6 +120,8 @@ bookingsRouter.patch("/:id/cancel", (req, res, next) => {
     const booking = store.bookings.find((item) => item.id === req.params.id);
     if (!booking) throw notFound("Booking not found");
     assertParticipant(req.user, booking);
+    if (booking.status === "completed") throw badRequest("A completed session cannot be cancelled");
+    if (booking.status === "cancelled") throw badRequest("This booking is already cancelled");
     booking.status = "cancelled";
     booking.cancellationReason = req.body.reason || "Cancelled by user";
     const slot = store.availability.find(
