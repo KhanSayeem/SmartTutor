@@ -34,6 +34,16 @@ function cx(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
+function useEscapeToClose(onClose) {
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+}
+
 function Logo() {
   return (
     <Link to="/" className="brand-logo">
@@ -1261,6 +1271,7 @@ function BookingRow({ booking, onReschedule, onCancel }) {
 // Reuses the calendar/slot/mode picker from BookingWidget (Figma 9:163), per
 // issue #31's "reusing the calendar picker" instruction.
 function RescheduleModal({ booking, onClose }) {
+  useEscapeToClose(onClose);
   const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ["tutor-availability", booking.tutorId],
@@ -1373,6 +1384,7 @@ function RescheduleModal({ booking, onClose }) {
 }
 
 function CancelModal({ booking, onClose }) {
+  useEscapeToClose(onClose);
   const [reason, setReason] = useState("");
   const queryClient = useQueryClient();
   const mutation = useMutation({
@@ -1673,6 +1685,7 @@ function formatMaterialSize(bytes) {
 }
 
 function DeleteMaterialModal({ material, onClose, onConfirm, isPending }) {
+  useEscapeToClose(onClose);
   return (
     <div className="booking-modal-scrim">
       <div className="cancel-modal">
@@ -2019,6 +2032,7 @@ const ADMIN_ROLES = ["student", "tutor", "admin"];
 // the modal itself follows the established scrim/card token system used by
 // the booking reschedule/cancel modals.
 function EditUserModal({ user, onClose }) {
+  useEscapeToClose(onClose);
   const [role, setRole] = useState(user.role);
   const queryClient = useQueryClient();
   const mutation = useMutation({
