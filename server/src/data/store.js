@@ -29,8 +29,6 @@ const users = [
     subjects: ["Mathematics", "Physics", "Chemistry"],
     languages: ["English", "Hindi"],
     price: 45,
-    rating: 4.9,
-    reviewCount: 128,
     verified: true,
     bio:
       "Patient STEM tutor with 8 years of university teaching experience and a practical exam-prep approach.",
@@ -49,12 +47,34 @@ const users = [
     subjects: ["English", "History"],
     languages: ["English"],
     price: 38,
-    rating: 4.7,
-    reviewCount: 84,
     verified: true,
     bio: "Essay writing, source analysis, and senior-school study skills specialist.",
     qualifications: ["MEd Literacy", "BA History"],
     availabilitySummary: "Evenings and Sundays"
+  },
+  {
+    id: "u-student-2",
+    name: "Liam Ortiz",
+    email: "liam@smarttutor.local",
+    passwordHash,
+    role: "student",
+    active: true,
+    avatar: "LO",
+    joinedAt: "2026-05-02",
+    phone: "+61 400 000 102",
+    subjects: ["Physics"]
+  },
+  {
+    id: "u-student-3",
+    name: "Priya Nair",
+    email: "priya@smarttutor.local",
+    passwordHash,
+    role: "student",
+    active: true,
+    avatar: "PN",
+    joinedAt: "2026-05-21",
+    phone: "+61 400 000 103",
+    subjects: ["Chemistry", "Mathematics"]
   },
   {
     id: "u-admin",
@@ -118,6 +138,62 @@ const bookings = [
     status: "completed",
     notes: "Strong progress on quadratic equations.",
     createdAt: "2026-07-11T08:10:00.000Z"
+  },
+  {
+    id: "bk-0998",
+    reference: "ST-0998",
+    studentId: "u-student-2",
+    tutorId: "u-tutor",
+    subject: "Physics",
+    date: "2026-07-09",
+    startTime: "17:00",
+    endTime: "18:00",
+    mode: "Online",
+    amount: 45,
+    status: "completed",
+    createdAt: "2026-07-02T08:00:00.000Z"
+  },
+  {
+    id: "bk-0997",
+    reference: "ST-0997",
+    studentId: "u-student-3",
+    tutorId: "u-tutor",
+    subject: "Chemistry",
+    date: "2026-06-27",
+    startTime: "16:00",
+    endTime: "17:00",
+    mode: "In-Person",
+    amount: 45,
+    status: "completed",
+    createdAt: "2026-06-20T08:00:00.000Z"
+  },
+  {
+    id: "bk-0996",
+    reference: "ST-0996",
+    studentId: "u-student-2",
+    tutorId: "u-tutor",
+    subject: "Mathematics",
+    date: "2026-06-14",
+    startTime: "10:00",
+    endTime: "11:00",
+    mode: "Online",
+    amount: 45,
+    status: "completed",
+    createdAt: "2026-06-07T08:00:00.000Z"
+  },
+  {
+    id: "bk-0995",
+    reference: "ST-0995",
+    studentId: "u-student-3",
+    tutorId: "u-tutor-2",
+    subject: "English",
+    date: "2026-06-20",
+    startTime: "19:00",
+    endTime: "20:00",
+    mode: "Online",
+    amount: 38,
+    status: "completed",
+    createdAt: "2026-06-13T08:00:00.000Z"
   }
 ];
 
@@ -188,6 +264,52 @@ const reviews = [
     rating: 5,
     comment: "Clear explanations and practical exam strategies.",
     createdAt: "2026-07-19"
+  },
+  {
+    id: "rev-2",
+    tutorId: "u-tutor",
+    studentId: "u-student-2",
+    bookingId: "bk-0998",
+    rating: 4,
+    comment: "Great at breaking down mechanics problems. Would have liked a few more practice questions.",
+    createdAt: "2026-07-10"
+  },
+  {
+    id: "rev-3",
+    tutorId: "u-tutor",
+    studentId: "u-student-3",
+    bookingId: "bk-0997",
+    rating: 5,
+    comment: "Turned titration calculations from my worst topic into my most reliable one.",
+    createdAt: "2026-06-28"
+  },
+  {
+    id: "rev-4",
+    tutorId: "u-tutor",
+    studentId: "u-student-2",
+    bookingId: "bk-0996",
+    rating: 3,
+    comment: "Solid session, though we ran short on time for the last worked example.",
+    createdAt: "2026-06-15"
+  },
+  {
+    // Attached to a booking that is still pending, so it must never surface on the profile.
+    id: "rev-5",
+    tutorId: "u-tutor",
+    studentId: "u-student",
+    bookingId: "bk-1001",
+    rating: 1,
+    comment: "Placeholder review on an unfinished booking.",
+    createdAt: "2026-07-30"
+  },
+  {
+    id: "rev-6",
+    tutorId: "u-tutor-2",
+    studentId: "u-student-3",
+    bookingId: "bk-0995",
+    rating: 5,
+    comment: "Rebuilt my essay structure from scratch and my marks jumped a grade.",
+    createdAt: "2026-06-21"
   }
 ];
 
@@ -211,7 +333,31 @@ export const store = {
   userPublic(user) {
     if (!user) return null;
     const { passwordHash: _passwordHash, ...safeUser } = user;
-    return safeUser;
+    if (safeUser.role !== "tutor") return safeUser;
+    const summary = this.reviewSummary(safeUser.id);
+    return { ...safeUser, rating: summary.average, reviewCount: summary.count };
+  },
+  // Only reviews attached to a completed booking with the same tutor count as real feedback.
+  tutorReviews(tutorId) {
+    return this.reviews
+      .filter((review) => {
+        if (review.tutorId !== tutorId) return false;
+        const booking = this.bookings.find((item) => item.id === review.bookingId);
+        return Boolean(booking) && booking.status === "completed" && booking.tutorId === tutorId;
+      })
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  },
+  reviewSummary(tutorId) {
+    const reviews = this.tutorReviews(tutorId);
+    const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    let total = 0;
+    for (const review of reviews) {
+      const rating = Math.min(5, Math.max(1, Math.round(Number(review.rating) || 0)));
+      breakdown[rating] += 1;
+      total += rating;
+    }
+    const count = reviews.length;
+    return { count, average: count ? Math.round((total / count) * 10) / 10 : 0, breakdown };
   },
   findUserByEmail(email) {
     return this.users.find((user) => user.email.toLowerCase() === email.toLowerCase());

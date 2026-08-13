@@ -32,25 +32,33 @@ tutorsRouter.get("/", requireAuth, (req, res) => {
       )
     );
   }
-  tutors = tutors.filter((tutor) => Number(tutor.price || 0) <= maxPrice && Number(tutor.rating || 0) >= minRating);
+  const cards = tutors
+    .map((tutor) => store.userPublic(tutor))
+    .filter((tutor) => Number(tutor.price || 0) <= maxPrice && Number(tutor.rating || 0) >= minRating);
 
-  if (sort === "rating") tutors.sort((a, b) => b.rating - a.rating);
-  if (sort === "price") tutors.sort((a, b) => a.price - b.price);
+  if (sort === "rating") cards.sort((a, b) => b.rating - a.rating);
+  if (sort === "price") cards.sort((a, b) => a.price - b.price);
 
-  res.json({ total: tutors.length, tutors: tutors.map((tutor) => store.userPublic(tutor)) });
+  res.json({ total: cards.length, tutors: cards });
 });
 
 tutorsRouter.get("/:id", requireAuth, (req, res, next) => {
   try {
     const tutor = store.findUser(req.params.id);
     if (!tutor || tutor.role !== "tutor") throw notFound("Tutor not found");
-    const reviews = store.reviews
-      .filter((review) => review.tutorId === tutor.id)
-      .map((review) => ({ ...review, student: store.userPublic(store.findUser(review.studentId)) }));
+    const reviews = store.tutorReviews(tutor.id).map((review) => {
+      const booking = store.bookings.find((item) => item.id === review.bookingId);
+      return {
+        ...review,
+        student: store.userPublic(store.findUser(review.studentId)),
+        booking: booking ? { id: booking.id, subject: booking.subject, date: booking.date, mode: booking.mode } : null
+      };
+    });
     res.json({
       tutor: store.userPublic(tutor),
       availability: store.availability.filter((slot) => slot.tutorId === tutor.id && !slot.booked),
-      reviews
+      reviews,
+      reviewSummary: store.reviewSummary(tutor.id)
     });
   } catch (error) {
     next(error);

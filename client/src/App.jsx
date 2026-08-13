@@ -657,12 +657,105 @@ function BookingWidget({ tutor, availability }) {
   );
 }
 
+const PROFILE_TABS = [
+  { label: "Overview", value: "overview" },
+  { label: "Reviews", value: "reviews" },
+  { label: "Availability", value: "availability" }
+];
+
+// Figma node 9:134: 48px white bar, Inter 15px, 160px tab pitch, 3px blue underline on the active tab.
+function ProfileTabs({ active, onChange }) {
+  return (
+    <div className="profile-tabs" role="tablist" aria-label="Tutor profile sections">
+      {PROFILE_TABS.map((item) => (
+        <button
+          key={item.value}
+          type="button"
+          role="tab"
+          aria-selected={active === item.value}
+          className={cx("profile-tab", active === item.value && "is-active")}
+          onClick={() => onChange(item.value)}
+        >
+          <span className="profile-tab-label">
+            {item.label}
+            {active === item.value ? <span className="profile-tab-underline" /> : null}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function StarRating({ value, size = 14 }) {
+  return (
+    <span className="star-rating" aria-label={`${value} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star key={star} size={size} className={star <= Math.round(value) ? "star-on" : "star-off"} fill="currentColor" />
+      ))}
+    </span>
+  );
+}
+
+function ReviewsPanel({ reviews, summary }) {
+  const count = summary?.count || 0;
+  const average = summary?.average || 0;
+  const breakdown = summary?.breakdown || {};
+  if (!count) {
+    return (
+      <div className="review-empty">
+        <h2>No reviews yet</h2>
+        <p>Reviews appear here once a student completes a session with this tutor.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-5">
+      <section className="review-summary">
+        <div className="review-score">
+          <p className="review-average">{average.toFixed(1)}</p>
+          <StarRating value={average} size={16} />
+          <p className="review-score-caption">{count} {count === 1 ? "review" : "reviews"} from completed sessions</p>
+        </div>
+        <div className="review-breakdown">
+          {[5, 4, 3, 2, 1].map((star) => {
+            const total = breakdown[star] || 0;
+            return (
+              <div key={star} className="review-breakdown-row">
+                <span className="review-breakdown-label">{star} star</span>
+                <span className="review-breakdown-track">
+                  <span className="review-breakdown-fill" style={{ width: `${count ? (total / count) * 100 : 0}%` }} />
+                </span>
+                <span className="review-breakdown-count">{total}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      <div className="grid gap-3">
+        {reviews.map((review) => (
+          <article key={review.id} className="review-card">
+            <div className="review-card-top">
+              <Avatar user={review.student} />
+              <div>
+                <p className="review-author">{review.student?.name || "SmartTutor student"}</p>
+                <p className="review-meta">{review.createdAt}{review.booking ? ` · ${review.booking.subject} · ${review.booking.mode}` : ""}</p>
+              </div>
+              <StarRating value={review.rating} />
+            </div>
+            <p className="review-comment">{review.comment}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TutorProfilePage() {
   const { id } = useParams();
   const [tab, setTab] = useState("overview");
   const { data, isLoading } = useQuery({ queryKey: ["tutor", id], queryFn: () => api(`/tutors/${id}`) });
   if (isLoading) return <p>Loading tutor profile...</p>;
-  const { tutor, availability, reviews } = data;
+  const { tutor, availability, reviews, reviewSummary } = data;
   return (
     <>
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -675,13 +768,13 @@ function TutorProfilePage() {
                 <p className="mt-1 font-semibold text-slate-500">{tutor.subjects?.join(" · ")}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Badge tone="success">Verified</Badge>
-                  <Badge tone="warning"><Star size={12} fill="currentColor" /> {tutor.rating} ({tutor.reviewCount})</Badge>
+                  <Badge tone="warning"><Star size={12} fill="currentColor" /> {reviewSummary.average.toFixed(1)} ({reviewSummary.count})</Badge>
                 </div>
               </div>
             </div>
             <Button variant="secondary"><MessageSquare size={17} /> Message</Button>
           </div>
-          <Tabs tabs={[{ label: "Overview", value: "overview" }, { label: "Reviews", value: "reviews" }, { label: "Availability", value: "availability" }]} active={tab} onChange={setTab} />
+          <ProfileTabs active={tab} onChange={setTab} />
           {tab === "overview" ? (
             <div className="grid gap-5">
               <section><h2 className="text-xl font-extrabold">About</h2><p className="mt-2 text-slate-600">{tutor.bio}</p></section>
@@ -689,17 +782,7 @@ function TutorProfilePage() {
               <section><h2 className="text-xl font-extrabold">Subjects</h2><div className="mt-2 flex flex-wrap gap-2">{tutor.subjects?.map((item) => <Badge key={item} tone="student">{item}</Badge>)}</div></section>
             </div>
           ) : null}
-          {tab === "reviews" ? (
-            <div className="grid gap-3">
-              {reviews.length ? reviews.map((review) => (
-                <article key={review.id} className="rounded-xl bg-surface-shell p-4">
-                  <p className="font-bold text-status-warning">{"★".repeat(review.rating)}</p>
-                  <p className="mt-2 text-sm text-slate-600">{review.comment}</p>
-                  <p className="mt-2 text-xs font-bold text-slate-500">{review.student.name}</p>
-                </article>
-              )) : <p className="text-sm text-slate-500">No reviews yet.</p>}
-            </div>
-          ) : null}
+          {tab === "reviews" ? <ReviewsPanel reviews={reviews} summary={reviewSummary} /> : null}
           {tab === "availability" ? <div className="grid gap-2">{availability.map((slot) => <div key={slot.id} className="rounded-lg bg-surface-info p-3 text-sm font-bold text-brand-blue">{slot.date} · {slot.startTime}-{slot.endTime} · {slot.mode}</div>)}</div> : null}
         </section>
         <BookingWidget tutor={tutor} availability={availability} />

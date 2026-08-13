@@ -698,3 +698,209 @@ th {
     grid-template-columns: minmax(280px, 1fr) 120px repeat(5, 96px);
   }
 }
+
+/* Tutor Profile tabs — Figma node 9:134 */
+.profile-tabs {
+  display: flex;
+  height: 48px;
+  margin: 0 -24px 20px;
+  padding: 0 24px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.profile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-tab {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex: 0 0 160px;
+  height: 48px;
+  padding: 13px 0 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.profile-tab:hover {
+  color: var(--text);
+}
+
+.profile-tab.is-active,
+.profile-tab.is-active:hover {
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.profile-tab-label {
+  position: relative;
+  display: block;
+  line-height: 18px;
+}
+
+.profile-tab-underline {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: -18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--blue);
+}
+
+/* Reviews tab */
+.star-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 0;
+}
+
+.star-on {
+  color: var(--warning);
+}
+
+.star-off {
+  color: var(--border);
+}
+
+.review-summary {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  align-items: center;
+  gap: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.review-score {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.review-average {
+  margin: 0;
+  color: var(--navy);
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 44px;
+}
+
+.review-score-caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.review-breakdown {
+  display: grid;
+  gap: 10px;
+}
+
+.review-breakdown-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 24px;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-breakdown-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.review-breakdown-track {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--shell);
+  overflow: hidden;
+}
+
+.review-breakdown-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--warning);
+}
+
+.review-breakdown-count {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.review-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.review-card-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-author {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.review-meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-comment {
+  margin: 12px 0 0;
+  color: #374151;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.review-empty {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.review-empty h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.review-empty p {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .review-summary {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
