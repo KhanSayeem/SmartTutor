@@ -200,6 +200,66 @@ const bookings = [
     amount: 38,
     status: "completed",
     createdAt: "2026-06-13T08:00:00.000Z"
+  },
+  {
+    id: "bk-0994",
+    reference: "ST-0994",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Physics",
+    date: "2026-07-05",
+    startTime: "17:00",
+    endTime: "18:00",
+    mode: "Online",
+    amount: 45,
+    status: "completed",
+    notes: "Worked through projectile motion problems.",
+    createdAt: "2026-06-28T08:00:00.000Z"
+  },
+  {
+    id: "bk-0993",
+    reference: "ST-0993",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Mathematics",
+    date: "2026-06-25",
+    startTime: "10:00",
+    endTime: "11:00",
+    mode: "Online",
+    amount: 45,
+    status: "completed",
+    notes: "Reviewed factoring and the quadratic formula.",
+    createdAt: "2026-06-18T08:00:00.000Z"
+  },
+  {
+    id: "bk-0992",
+    reference: "ST-0992",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Chemistry",
+    date: "2026-06-10",
+    startTime: "16:00",
+    endTime: "17:00",
+    mode: "In-Person",
+    amount: 45,
+    status: "completed",
+    notes: "Introduced mole calculations and stoichiometry.",
+    createdAt: "2026-06-03T08:00:00.000Z"
+  },
+  {
+    id: "bk-0991",
+    reference: "ST-0991",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Mathematics",
+    date: "2026-08-05",
+    startTime: "16:00",
+    endTime: "17:00",
+    mode: "Online",
+    amount: 45,
+    status: "completed",
+    notes: "Timed practice on past-paper algebra questions.",
+    createdAt: "2026-07-29T08:00:00.000Z"
   }
 ];
 
@@ -213,6 +273,86 @@ const transactions = [
     amount: 45,
     status: "paid",
     createdAt: "2026-07-18T11:05:00.000Z"
+  },
+  {
+    id: "txn-0998",
+    bookingId: "bk-0998",
+    studentId: "u-student-2",
+    tutorId: "u-tutor",
+    subject: "Physics",
+    amount: 45,
+    status: "paid",
+    createdAt: "2026-07-09T11:05:00.000Z"
+  },
+  {
+    id: "txn-0997",
+    bookingId: "bk-0997",
+    studentId: "u-student-3",
+    tutorId: "u-tutor",
+    subject: "Chemistry",
+    amount: 45,
+    status: "paid",
+    createdAt: "2026-06-27T11:05:00.000Z"
+  },
+  {
+    id: "txn-0996",
+    bookingId: "bk-0996",
+    studentId: "u-student-2",
+    tutorId: "u-tutor",
+    subject: "Mathematics",
+    amount: 45,
+    status: "paid",
+    createdAt: "2026-06-14T11:05:00.000Z"
+  },
+  {
+    id: "txn-0995",
+    bookingId: "bk-0995",
+    studentId: "u-student-3",
+    tutorId: "u-tutor-2",
+    subject: "English",
+    amount: 38,
+    status: "paid",
+    createdAt: "2026-06-20T11:05:00.000Z"
+  },
+  {
+    id: "txn-0994",
+    bookingId: "bk-0994",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Physics",
+    amount: 45,
+    status: "paid",
+    createdAt: "2026-07-05T11:05:00.000Z"
+  },
+  {
+    id: "txn-0993",
+    bookingId: "bk-0993",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Mathematics",
+    amount: 45,
+    status: "paid",
+    createdAt: "2026-06-25T11:05:00.000Z"
+  },
+  {
+    id: "txn-0992",
+    bookingId: "bk-0992",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Chemistry",
+    amount: 45,
+    status: "paid",
+    createdAt: "2026-06-10T11:05:00.000Z"
+  },
+  {
+    id: "txn-0991",
+    bookingId: "bk-0991",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Mathematics",
+    amount: 45,
+    status: "paid",
+    createdAt: "2026-08-05T11:05:00.000Z"
   }
 ];
 
@@ -316,6 +456,42 @@ const reviews = [
     rating: 5,
     comment: "Rebuilt my essay structure from scratch and my marks jumped a grade.",
     createdAt: "2026-06-21"
+  },
+  {
+    id: "rev-7",
+    tutorId: "u-tutor",
+    studentId: "u-student",
+    bookingId: "bk-0994",
+    rating: 5,
+    comment: "Projectile motion finally clicked once we worked through it step by step.",
+    createdAt: "2026-07-06"
+  },
+  {
+    id: "rev-8",
+    tutorId: "u-tutor",
+    studentId: "u-student",
+    bookingId: "bk-0993",
+    rating: 4,
+    comment: "Good refresher on factoring, would like more worked examples next time.",
+    createdAt: "2026-06-26"
+  },
+  {
+    id: "rev-9",
+    tutorId: "u-tutor",
+    studentId: "u-student",
+    bookingId: "bk-0992",
+    rating: 5,
+    comment: "Stoichiometry finally makes sense — great pacing.",
+    createdAt: "2026-06-11"
+  },
+  {
+    id: "rev-10",
+    tutorId: "u-tutor",
+    studentId: "u-student",
+    bookingId: "bk-0991",
+    rating: 5,
+    comment: "Past-paper practice was exactly what I needed before the mocks.",
+    createdAt: "2026-08-06"
   }
 ];
 

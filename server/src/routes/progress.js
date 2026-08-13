@@ -7,42 +7,103 @@ export const progressRouter = Router();
 
 progressRouter.use(requireAuth);
 
+// A mastery target is a heuristic, not a curriculum model: there is no lesson
+// plan in this app, so "percent progress" is defined as how far a subject's
+// completed-session count is toward this target, capped at 100%.
+const MASTERY_SESSIONS_TARGET = 6;
+
 progressRouter.get("/student", permit("student"), (req, res) => {
-  const completed = store.bookings.filter((booking) => booking.studentId === req.user.id && booking.status === "completed");
+  const own = store.bookings.filter((booking) => booking.studentId === req.user.id);
+  const completed = own.filter((booking) => booking.status === "completed");
+
   const bySubject = completed.reduce((acc, booking) => {
-    acc[booking.subject] = acc[booking.subject] || { subject: booking.subject, sessions: 0, progress: 0 };
+    acc[booking.subject] = acc[booking.subject] || { subject: booking.subject, sessions: 0 };
     acc[booking.subject].sessions += 1;
-    acc[booking.subject].progress = Math.min(100, acc[booking.subject].sessions * 18 + 42);
     return acc;
   }, {});
+  const subjects = Object.values(bySubject).map((row) => ({
+    ...row,
+    progress: Math.min(100, Math.round((row.sessions / MASTERY_SESSIONS_TARGET) * 100))
+  }));
+
+  const studentReviews = store.reviews.filter((review) => review.studentId === req.user.id);
+  const completedReviews = studentReviews.filter((review) => {
+    const booking = store.bookings.find((item) => item.id === review.bookingId);
+    return booking && booking.status === "completed";
+  });
+  const averageRating = completedReviews.length
+    ? Math.round((completedReviews.reduce((sum, review) => sum + review.rating, 0) / completedReviews.length) * 10) / 10
+    : null;
+
+  const history = completed
+    .slice()
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map((booking) => {
+      const review = studentReviews.find((item) => item.bookingId === booking.id);
+      return {
+        id: booking.id,
+        date: booking.date,
+        subject: booking.subject,
+        tutor: store.userPublic(store.findUser(booking.tutorId)),
+        notes: booking.notes || null,
+        rating: review ? review.rating : null
+      };
+    });
+
   res.json({
     stats: {
+      sessionsTotal: own.length,
       completedSessions: completed.length,
-      activeSubjects: Object.keys(bySubject).length,
-      averageProgress: Object.values(bySubject).length
-        ? Math.round(Object.values(bySubject).reduce((sum, item) => sum + item.progress, 0) / Object.values(bySubject).length)
-        : 0
+      activeSubjects: subjects.length,
+      averageRating
     },
-    subjects: Object.values(bySubject),
-    history: completed.map((booking) => store.shapeBooking(booking))
+    subjects,
+    history
   });
 });
 
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 progressRouter.get("/earnings", permit("tutor"), (req, res) => {
   const rows = store.transactions.filter((transaction) => transaction.tutorId === req.user.id);
+  const totalEarnings = rows.reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  const now = new Date();
+  const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const thisMonth = rows
+    .filter((transaction) => transaction.createdAt.slice(0, 7) === thisMonthKey)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  // There is no pending-transaction concept in this schema -- a transaction is
+  // only ever created already "paid", when a booking completes. Pending payout
+  // is instead the amount tied up in this tutor's accepted-but-not-yet-completed
+  // bookings, which is a real number even though it isn't a Transaction row.
+  const pendingPayout = store.bookings
+    .filter((booking) => booking.tutorId === req.user.id && booking.status === "confirmed")
+    .reduce((sum, booking) => sum + (booking.amount || 0), 0);
+
   const monthly = rows.reduce((acc, transaction) => {
     const key = transaction.createdAt.slice(0, 7);
     acc[key] = (acc[key] || 0) + transaction.amount;
     return acc;
   }, {});
+  const monthlySeries = Object.entries(monthly)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([key, amount]) => ({ key, month: MONTH_LABELS[Number(key.slice(5, 7)) - 1], amount }));
+
   res.json({
     stats: {
-      totalEarnings: rows.reduce((sum, transaction) => sum + transaction.amount, 0),
-      paidSessions: rows.length,
-      averageSession: rows.length ? Math.round(rows.reduce((sum, transaction) => sum + transaction.amount, 0) / rows.length) : 0
+      thisMonth,
+      allTime: totalEarnings,
+      pendingPayout,
+      sessions: rows.length
     },
-    monthly: Object.entries(monthly).map(([month, amount]) => ({ month, amount })),
-    transactions: rows.map((transaction) => store.shapeTransaction(transaction))
+    monthly: monthlySeries,
+    transactions: rows
+      .slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map((transaction) => store.shapeTransaction(transaction))
   });
 });
 

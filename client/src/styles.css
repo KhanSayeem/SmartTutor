@@ -1788,3 +1788,224 @@ th {
     max-width: 88%;
   }
 }
+
+/* Student Progress + Tutor Earnings — Figma nodes 13:128 / 11:99 / 11:132 / 11:154 */
+.section-heading {
+  margin: 0 0 16px;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.stat-simple-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.simple-stat {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 20px 28px;
+}
+
+.simple-stat-value {
+  margin: 0;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 34px;
+}
+
+.simple-stat-label {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.subject-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px 40px;
+  margin-bottom: 32px;
+}
+
+.subject-progress-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 24px 24px;
+}
+
+.subject-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.subject-progress-pct {
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.subject-progress-track {
+  margin-top: 24px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--shell);
+  overflow: hidden;
+}
+
+.subject-progress-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--blue);
+}
+
+.session-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-history-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--card);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 10px 24px 14px;
+}
+
+.session-history-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.session-history-title {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.session-history-notes {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.session-history-badge {
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: var(--info-bg);
+  color: var(--blue);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.earnings-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.earnings-chart-card,
+.earnings-txn-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 20px 24px 24px;
+}
+
+.earnings-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  height: 180px;
+  margin-top: 24px;
+  padding: 0 4px;
+}
+
+.earnings-bar-col {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.earnings-bar-value {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.earnings-bar-fill {
+  width: 100%;
+  max-width: 80px;
+  border-radius: 6px;
+  background: var(--blue);
+}
+
+.earnings-bar-month {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.earnings-txn-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 70px 76px;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.earnings-txn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 70px 76px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.earnings-txn-row:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .earnings-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .stat-simple-grid,
+  .subject-progress-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-history-row {
+    flex-direction: column;
+  }
+}

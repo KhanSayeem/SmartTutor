@@ -1491,48 +1491,107 @@ function MaterialsPage() {
   );
 }
 
+function SimpleStat({ value, label, tone }) {
+  return (
+    <div className="simple-stat">
+      <p className="simple-stat-value" style={tone ? { color: tone } : undefined}>{value}</p>
+      <p className="simple-stat-label">{label}</p>
+    </div>
+  );
+}
+
+// Figma node 13:128. The "Avg. Score" stat has no real per-session score in
+// this data model, so it is sourced honestly from the student's own review
+// ratings on completed bookings instead of a fabricated number.
 function StudentProgressPage() {
   const { data } = useQuery({ queryKey: ["student-progress"], queryFn: () => api("/progress/student") });
+  const stats = data?.stats;
   return (
     <>
-      <PageTitle title="Student Progress" subtitle="Calculated from completed bookings and tutor session notes." />
-      <div className="mb-5 grid gap-4 md:grid-cols-3">
-        <StatCard label="Completed Sessions" value={data?.stats.completedSessions || 0} icon={BookOpen} />
-        <StatCard label="Active Subjects" value={data?.stats.activeSubjects || 0} icon={GraduationCap} />
-        <StatCard label="Average Progress" value={`${data?.stats.averageProgress || 0}%`} icon={Star} />
+      <PageTitle title="My Learning Progress" subtitle="Calculated from completed bookings, tutor session notes, and your own reviews." />
+      <div className="stat-simple-grid">
+        <SimpleStat value={stats?.sessionsTotal ?? 0} label="Sessions Total" tone="var(--blue)" />
+        <SimpleStat value={stats?.completedSessions ?? 0} label="Completed" tone="var(--blue)" />
+        <SimpleStat value={stats?.activeSubjects ?? 0} label="Subjects Active" tone="var(--blue)" />
+        <SimpleStat value={stats?.averageRating ? `${stats.averageRating}★` : "—"} label="Avg. Rating Given" tone="var(--warning)" />
       </div>
-      <section className="card p-5">
-        <h2 className="text-xl font-extrabold">Subject Progress</h2>
-        <div className="mt-4 grid gap-4">
-          {(data?.subjects || []).map((subject) => (
-            <div key={subject.subject}>
-              <div className="flex justify-between text-sm font-bold"><span>{subject.subject}</span><span>{subject.progress}%</span></div>
-              <div className="mt-2 h-3 rounded-full bg-surface-shell"><div className="h-3 rounded-full bg-brand-blue" style={{ width: `${subject.progress}%` }} /></div>
+      <h2 className="section-heading">Progress by Subject</h2>
+      <div className="subject-progress-grid">
+        {(data?.subjects || []).map((subject) => (
+          <div key={subject.subject} className="subject-progress-card">
+            <div className="subject-progress-row">
+              <span>{subject.subject}</span>
+              <span className="subject-progress-pct">{subject.progress}%</span>
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="subject-progress-track">
+              <div className="subject-progress-fill" style={{ width: `${subject.progress}%` }} />
+            </div>
+          </div>
+        ))}
+        {data && !data.subjects.length ? <p className="text-sm text-slate-500">No completed sessions yet.</p> : null}
+      </div>
+      <h2 className="section-heading">Recent Session History</h2>
+      <div className="session-history-list">
+        {(data?.history || []).map((session) => (
+          <article key={session.id} className="session-history-row">
+            <div>
+              <p className="session-history-date">{session.date}</p>
+              <p className="session-history-title">{session.tutor?.name} — {session.subject}</p>
+              {session.notes ? <p className="session-history-notes">{session.notes}</p> : null}
+            </div>
+            {session.rating ? <span className="session-history-badge">{session.rating}/5 ★</span> : null}
+          </article>
+        ))}
+        {data && !data.history.length ? <p className="text-sm text-slate-500">No completed sessions yet.</p> : null}
+      </div>
     </>
   );
 }
 
+// Figma nodes 11:99 / 11:132 / 11:154.
 function EarningsPage() {
   const { data } = useQuery({ queryKey: ["earnings"], queryFn: () => api("/progress/earnings") });
+  const stats = data?.stats;
   const max = Math.max(...(data?.monthly || []).map((item) => item.amount), 1);
   return (
     <>
-      <PageTitle title="Tutor Earnings" subtitle="Reads from the shared Transaction collection." />
-      <div className="mb-5 grid gap-4 md:grid-cols-3">
-        <StatCard label="Total Earnings" value={`$${data?.stats.totalEarnings || 0}`} icon={Wallet} />
-        <StatCard label="Paid Sessions" value={data?.stats.paidSessions || 0} icon={Calendar} />
-        <StatCard label="Average Session" value={`$${data?.stats.averageSession || 0}`} icon={Star} />
+      <PageTitle title="Earnings & Payments" subtitle="Reads from the shared Transaction collection." />
+      <div className="stat-simple-grid">
+        <SimpleStat value={`$${stats?.thisMonth ?? 0}`} label="This Month" tone="var(--success)" />
+        <SimpleStat value={`$${stats?.allTime ?? 0}`} label="All Time" tone="var(--navy)" />
+        <SimpleStat value={`$${stats?.pendingPayout ?? 0}`} label="Pending Payout" tone="var(--warning)" />
+        <SimpleStat value={stats?.sessions ?? 0} label="Sessions" tone="var(--navy)" />
       </div>
-      <section className="card p-5">
-        <h2 className="text-xl font-extrabold">Monthly Earnings</h2>
-        <div className="mt-5 flex h-48 items-end gap-4">
-          {(data?.monthly || []).map((item) => <div key={item.month} className="grid flex-1 gap-2 text-center text-xs font-bold"><div className="chart-bar mx-auto w-full" style={{ height: `${Math.max(12, (item.amount / max) * 150)}px` }} /><span>{item.month}</span></div>)}
-        </div>
-      </section>
+      <div className="earnings-panels">
+        <section className="earnings-chart-card">
+          <h2 className="section-heading">Monthly Earnings</h2>
+          <div className="earnings-chart-bars">
+            {(data?.monthly || []).map((item) => (
+              <div key={item.key} className="earnings-bar-col">
+                <span className="earnings-bar-value">${item.amount}</span>
+                <div className="earnings-bar-fill" style={{ height: `${Math.max(8, (item.amount / max) * 100)}%` }} />
+                <span className="earnings-bar-month">{item.month}</span>
+              </div>
+            ))}
+            {data && !data.monthly.length ? <p className="text-sm text-slate-500">No paid sessions yet.</p> : null}
+          </div>
+        </section>
+        <section className="earnings-txn-card">
+          <h2 className="section-heading">Recent Transactions</h2>
+          <div className="earnings-txn-header">
+            <span>Student</span><span>Subject</span><span>Amount</span><span>Status</span>
+          </div>
+          {(data?.transactions || []).slice(0, 8).map((transaction) => (
+            <div key={transaction.id} className="earnings-txn-row">
+              <span>{transaction.student?.name}</span>
+              <span className="text-slate-500">{transaction.subject}</span>
+              <span className="font-bold">${transaction.amount}</span>
+              <StatusBadge status={transaction.status} />
+            </div>
+          ))}
+          {data && !data.transactions.length ? <p className="text-sm text-slate-500">No transactions yet.</p> : null}
+        </section>
+      </div>
     </>
   );
 }
