@@ -1463,9 +1463,11 @@ function MessagesPage() {
   const [body, setBody] = useState("");
   const [olderPages, setOlderPages] = useState([]);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState([]);
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
   const pendingScrollRef = useRef(null);
+  const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
@@ -1502,6 +1504,7 @@ function MessagesPage() {
 
   useEffect(() => {
     setOlderPages([]);
+    setPendingAttachments([]);
   }, [activeId]);
 
   // Newest-message auto-scroll, and scroll-anchor restore after a page of older
@@ -1543,10 +1546,29 @@ function MessagesPage() {
     if (activeId && event.target.value.trim()) typingMutation.mutate();
   };
 
+  const attachMutation = useMutation({
+    mutationFn: (file) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api(`/messages/conversations/${activeId}/attachments`, { method: "POST", body: form });
+    },
+    onSuccess: (data) => setPendingAttachments((current) => [...current, data.attachment])
+  });
+  const onPickFile = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) attachMutation.mutate(file);
+  };
+  const removePendingAttachment = (url) => {
+    setPendingAttachments((current) => current.filter((item) => item.url !== url));
+  };
+
+  const canSend = Boolean(body.trim() || pendingAttachments.length);
   const sendMutation = useMutation({
-    mutationFn: () => api(`/messages/conversations/${activeId}/messages`, { method: "POST", body: { body } }),
+    mutationFn: () => api(`/messages/conversations/${activeId}/messages`, { method: "POST", body: { body, attachments: pendingAttachments } }),
     onSuccess: () => {
       setBody("");
+      setPendingAttachments([]);
       queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     }
@@ -1598,7 +1620,22 @@ function MessagesPage() {
               const mine = message.senderId === user.id;
               return (
                 <div key={message.id} className={cx("chat-row", mine && "is-mine")}>
-                  <div className={cx("chat-bubble", mine && "is-mine")}>{message.body}</div>
+                  <div className={cx("chat-bubble", mine && "is-mine")}>
+                    {message.body ? <p>{message.body}</p> : null}
+                    {(message.attachments || []).map((attachment, index) => (
+                      <a
+                        key={`${message.id}-${index}`}
+                        className="chat-attachment-chip"
+                        href={/^https?:\/\//.test(attachment.url) ? attachment.url : undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-disabled={!/^https?:\/\//.test(attachment.url)}
+                      >
+                        📎 {attachment.title}
+                        {attachment.size ? <span className="chat-attachment-size">{formatMaterialSize(attachment.size)}</span> : null}
+                      </a>
+                    ))}
+                  </div>
                   <p className="chat-meta">
                     {mine ? "Delivered ✓✓" : (
                       <button className="chat-flag" type="button" onClick={() => flagMutation.mutate(message.id)}>Flag to admin</button>
@@ -1610,12 +1647,33 @@ function MessagesPage() {
             {peerTyping ? <div className="chat-typing" aria-label="Typing"><span /><span /><span /></div> : null}
             <div ref={bottomRef} />
           </div>
-          <form className="chat-composer" onSubmit={(event) => { event.preventDefault(); if (body.trim()) sendMutation.mutate(); }}>
+          {pendingAttachments.length ? (
+            <div className="chat-pending-attachments">
+              {pendingAttachments.map((attachment) => (
+                <span key={attachment.url} className="chat-pending-chip">
+                  📎 {attachment.title}
+                  <button type="button" aria-label={`Remove ${attachment.title}`} onClick={() => removePendingAttachment(attachment.url)}>×</button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {attachMutation.error ? <p className="chat-attach-error">{attachMutation.error.message}</p> : null}
+          <form className="chat-composer" onSubmit={(event) => { event.preventDefault(); if (canSend) sendMutation.mutate(); }}>
             <div className="chat-input-wrap">
               <input className="chat-input" value={body} onChange={onBodyChange} placeholder="Type a message..." />
-              <button className="chat-attach" type="button" title="Attachments are tracked in issue #47" aria-label="Attach a file">📎</button>
+              <input ref={fileInputRef} type="file" className="sr-only" accept=".pdf,.docx,.png,.mp4" onChange={onPickFile} />
+              <button
+                className="chat-attach"
+                type="button"
+                title="Attach a file"
+                aria-label="Attach a file"
+                disabled={!activeId || attachMutation.isPending}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                📎
+              </button>
             </div>
-            <button className="chat-send" type="submit" disabled={!body.trim() || sendMutation.isPending}>Send →</button>
+            <button className="chat-send" type="submit" disabled={!canSend || sendMutation.isPending}>Send →</button>
           </form>
         </section>
       </div>

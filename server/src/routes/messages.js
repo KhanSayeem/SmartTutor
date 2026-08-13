@@ -1,12 +1,16 @@
+import multer from "multer";
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { store } from "../data/store.js";
 import { permit, requireAuth } from "../middleware/auth.js";
 import { getRealtimeContract } from "../services/realtime.js";
+import { saveUploadedFile } from "../services/storage.js";
 import { badRequest, forbidden, notFound } from "../utils/errors.js";
+import { validateUpload } from "../utils/fileValidation.js";
 
 export const messagesRouter = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // Non-numeric query values used to slide straight through Math.max/Math.min as
 // NaN and silently return an empty page with a 200.
@@ -81,6 +85,31 @@ messagesRouter.get("/conversations/:id/messages", (req, res, next) => {
   }
 });
 
+// Attachments are uploaded here first (multipart, one file at a time) and the
+// returned metadata is what the client then includes in the JSON message
+// send below -- same two-step shape as the materials upload flow, reusing
+// its validation and storage helpers rather than duplicating them.
+messagesRouter.post("/conversations/:id/attachments", upload.single("file"), async (req, res, next) => {
+  try {
+    const conversation = store.conversations.find((item) => item.id === req.params.id);
+    if (!conversation) throw notFound("Conversation not found");
+    if (!conversation.participantIds.includes(req.user.id)) throw forbidden();
+    const validationError = validateUpload(req.file);
+    if (validationError) return res.status(400).json({ message: validationError });
+    const saved = await saveUploadedFile(req.file, "messages");
+    res.status(201).json({
+      attachment: {
+        title: req.file.originalname,
+        url: saved.url,
+        mimeType: req.file.mimetype,
+        size: req.file.size
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 messagesRouter.post("/conversations/:id/messages", (req, res, next) => {
   try {
     const conversation = store.conversations.find((item) => item.id === req.params.id);
@@ -88,8 +117,20 @@ messagesRouter.post("/conversations/:id/messages", (req, res, next) => {
     if (!conversation.participantIds.includes(req.user.id)) throw forbidden();
     const payload = z
       .object({
-        body: z.string().min(1),
-        attachments: z.array(z.object({ title: z.string(), url: z.string() })).default([])
+        body: z.string().default(""),
+        attachments: z
+          .array(
+            z.object({
+              title: z.string(),
+              url: z.string(),
+              mimeType: z.string().optional(),
+              size: z.number().optional()
+            })
+          )
+          .default([])
+      })
+      .refine((data) => data.body.trim().length > 0 || data.attachments.length > 0, {
+        message: "Message must include text or at least one attachment"
       })
       .parse(req.body);
     const message = {

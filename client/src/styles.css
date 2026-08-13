@@ -1669,6 +1669,32 @@ th {
   color: white;
 }
 
+.chat-attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.chat-attachment-chip[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.chat-attachment-size {
+  color: inherit;
+  opacity: 0.7;
+  font-weight: 500;
+  font-size: 11px;
+}
+
 .chat-meta {
   margin: 4px 0 0;
   color: var(--muted);
@@ -1718,6 +1744,50 @@ th {
 @keyframes chat-typing-bounce {
   0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.chat-pending-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 24px 12px;
+  flex-shrink: 0;
+}
+
+.chat-pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--shell);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chat-pending-chip button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-attach-error {
+  padding: 0 24px 8px;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.chat-attach:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .chat-composer {
