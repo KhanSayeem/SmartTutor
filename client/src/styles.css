@@ -2205,3 +2205,156 @@ th {
     justify-content: flex-end;
   }
 }
+
+/* Learning Materials — Figma nodes 11:204 (dropzone) / 11:208 (row) */
+.materials-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  margin-bottom: 20px;
+  padding: 24px;
+  border: 2px dashed var(--blue);
+  border-radius: 12px;
+  background: var(--info-bg);
+  text-align: center;
+  cursor: pointer;
+}
+
+.materials-dropzone.is-dragging {
+  background: #dbeafe;
+}
+
+.materials-dropzone-label {
+  margin: 0;
+  color: var(--blue);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.materials-dropzone-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.materials-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.materials-upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.materials-student-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--shell);
+}
+
+.materials-student-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.materials-list-heading {
+  margin-top: 8px;
+}
+
+.materials-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.material-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--card);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 20px 24px;
+}
+
+.material-type-badge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.material-row[data-type="DOCX"] .material-type-badge {
+  background: var(--blue);
+}
+
+.material-row[data-type="PNG"] .material-type-badge {
+  background: var(--success);
+}
+
+.material-row[data-type="MP4"] .material-type-badge {
+  background: var(--warning);
+}
+
+.material-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.material-row-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.material-row-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.material-row-shared {
+  flex-shrink: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  max-width: 220px;
+}
+
+.material-row-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .material-row {
+    flex-wrap: wrap;
+  }
+
+  .material-row-shared {
+    order: 3;
+    max-width: none;
+  }
+}

@@ -71,6 +71,13 @@ materialsRouter.get("/:id/download", (req, res, next) => {
       material.public ||
       material.linkedStudentIds.includes(req.user.id);
     if (!allowed) throw forbidden("You do not have access to this material");
+    // When Supabase Storage is configured, material.url is a real public file
+    // URL -- redirect there so the client downloads the actual bytes. Only
+    // the unconfigured local stub (a smarttutor:// placeholder scheme) falls
+    // back to a synthetic response, since there is no real file to serve.
+    if (/^https?:\/\//.test(material.url)) {
+      return res.redirect(material.url);
+    }
     res.setHeader("Content-Type", material.mimeType);
     res.setHeader("Content-Disposition", `attachment; filename="${material.title}"`);
     res.send(`SmartTutor demo file placeholder for ${material.title}\nStorage path: ${material.storagePath}`);

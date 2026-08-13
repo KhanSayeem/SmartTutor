@@ -1656,56 +1656,193 @@ function TutorDashboardPage() {
   );
 }
 
+const MATERIAL_TYPE_LABELS = {
+  "application/pdf": "PDF",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+  "image/png": "PNG",
+  "video/mp4": "MP4"
+};
+
+function materialTypeLabel(mimeType) {
+  return MATERIAL_TYPE_LABELS[mimeType] || "FILE";
+}
+
+function formatMaterialSize(bytes) {
+  return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function DeleteMaterialModal({ material, onClose, onConfirm, isPending }) {
+  return (
+    <div className="booking-modal-scrim">
+      <div className="cancel-modal">
+        <h3 className="reschedule-modal-title">Delete Material</h3>
+        <p className="reschedule-modal-subtitle">{material.title}</p>
+        <p className="text-sm text-slate-500 mt-4">This removes the file for every student it is linked to. This can&rsquo;t be undone.</p>
+        <div className="reschedule-modal-actions">
+          <button type="button" className="btn btn-neutral" onClick={onClose}>Keep File</button>
+          <button type="button" className="btn btn-danger" disabled={isPending} onClick={onConfirm}>
+            {isPending ? "Deleting..." : "Delete Material"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Figma nodes 11:185 (page) / 11:204 (dropzone) / 11:208 (row).
 function MaterialsPage() {
+  const { token } = useAuthStore();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState("");
+  const [shareWithAll, setShareWithAll] = useState(true);
+  const [linkedStudentIds, setLinkedStudentIds] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+
   const materials = useQuery({ queryKey: ["materials"], queryFn: () => api("/materials") });
+  // The upload form previously hardcoded a single demo student id. Students
+  // this tutor can actually share with are derived from their real bookings.
+  const tutorBookings = useQuery({ queryKey: ["tutor-bookings-for-materials"], queryFn: () => api("/bookings?status=all") });
+  const myStudents = useMemo(() => {
+    const seen = new Map();
+    for (const booking of tutorBookings.data?.bookings || []) {
+      if (booking.student && !seen.has(booking.student.id)) seen.set(booking.student.id, booking.student);
+    }
+    return [...seen.values()];
+  }, [tutorBookings.data]);
+
   const uploadMutation = useMutation({
     mutationFn: () => {
       const form = new FormData();
       form.append("file", file);
       form.append("title", title || file.name);
-      form.append("linkedStudentIds", "u-student");
+      form.append("public", shareWithAll ? "true" : "false");
+      if (!shareWithAll) form.append("linkedStudentIds", linkedStudentIds.join(","));
       return api("/materials", { method: "POST", body: form });
     },
     onSuccess: () => {
       setFile(null);
       setTitle("");
+      setLinkedStudentIds([]);
       queryClient.invalidateQueries({ queryKey: ["materials"] });
     }
   });
-  const deleteMutation = useMutation({ mutationFn: (id) => api(`/materials/${id}`, { method: "DELETE" }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["materials"] }) });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api(`/materials/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+      setDeleting(null);
+    }
+  });
+
+  const toggleStudent = (id) => {
+    setLinkedStudentIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  };
+
+  const onDrop = (event) => {
+    event.preventDefault();
+    setIsDragging(false);
+    const dropped = event.dataTransfer.files?.[0];
+    if (dropped) setFile(dropped);
+  };
+
+  async function downloadMaterial(material) {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/materials/${material.id}/download`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = material.title;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
-      <PageTitle title="Tutor Materials" subtitle="Upload PDF, DOCX, PNG, or MP4 files up to 50MB and link them to students." />
-      <section className="card mb-5 p-5">
-        <ErrorNotice error={uploadMutation.error} />
-        <form className="grid gap-4 md:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => { event.preventDefault(); if (file) uploadMutation.mutate(); }}>
-          <Field label="Title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Revision worksheet" />
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold">File</span>
-            <input className="field" type="file" accept=".pdf,.docx,.png,.mp4" onChange={(event) => setFile(event.target.files?.[0])} />
+      <PageTitle title="Learning Materials" subtitle="Upload PDF, DOCX, PNG, or MP4 files up to 50MB and share them with your students." />
+      <ErrorNotice error={uploadMutation.error} />
+      <div
+        className={cx("materials-dropzone", isDragging && "is-dragging")}
+        role="button"
+        tabIndex={0}
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") fileInputRef.current?.click(); }}
+        onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={onDrop}
+      >
+        <p className="materials-dropzone-label">📁 {file ? file.name : "Drag and drop files here, or click to browse"}</p>
+        <p className="materials-dropzone-hint">PDF, DOCX, PNG, MP4 • Max 50MB per file</p>
+        <input
+          ref={fileInputRef}
+          className="sr-only"
+          type="file"
+          accept=".pdf,.docx,.png,.mp4"
+          onChange={(event) => setFile(event.target.files?.[0] || null)}
+        />
+      </div>
+      {file ? (
+        <section className="card materials-upload-form">
+          <Field label="Title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={file.name} />
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={shareWithAll} onChange={(event) => setShareWithAll(event.target.checked)} />
+            Share with all my students
           </label>
-          <Button className="self-end" disabled={!file || uploadMutation.isPending}><FileUp size={17} /> Upload</Button>
-        </form>
-      </section>
-      <section className="card table-wrap">
-        <table>
-          <thead><tr><th>File</th><th>Size</th><th>Date</th><th>Access</th><th></th></tr></thead>
-          <tbody>
-            {(materials.data?.materials || []).map((material) => (
-              <tr key={material.id}>
-                <td className="font-bold">{material.title}</td>
-                <td>{Math.round(material.size / 1024)} KB</td>
-                <td>{material.createdAt.slice(0, 10)}</td>
-                <td>{material.public ? "Public" : `${material.linkedStudentIds.length} linked`}</td>
-                <td><Button variant="danger" onClick={() => window.confirm("Delete this material?") && deleteMutation.mutate(material.id)}>Delete</Button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+          {!shareWithAll ? (
+            <div className="materials-student-picker">
+              {myStudents.length ? myStudents.map((student) => (
+                <label key={student.id} className="materials-student-option">
+                  <input type="checkbox" checked={linkedStudentIds.includes(student.id)} onChange={() => toggleStudent(student.id)} />
+                  {student.name}
+                </label>
+              )) : <p className="text-sm text-slate-500">No students yet — this will save as unshared until you have a booking.</p>}
+            </div>
+          ) : null}
+          <div className="materials-upload-actions">
+            <Button variant="secondary" type="button" onClick={() => { setFile(null); setTitle(""); }}>Cancel</Button>
+            <Button
+              disabled={uploadMutation.isPending || (!shareWithAll && !linkedStudentIds.length)}
+              onClick={() => uploadMutation.mutate()}
+            >
+              <FileUp size={17} /> {uploadMutation.isPending ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      <h2 className="section-heading materials-list-heading">Uploaded Materials</h2>
+      <div className="materials-list">
+        {(materials.data?.materials || []).map((material) => (
+          <article key={material.id} className="material-row" data-type={materialTypeLabel(material.mimeType)}>
+            <span className="material-type-badge">{materialTypeLabel(material.mimeType)}</span>
+            <div className="material-row-info">
+              <p className="material-row-title">{material.title}</p>
+              <p className="material-row-meta">{formatMaterialSize(material.size)} • Uploaded {material.createdAt.slice(0, 10)}</p>
+            </div>
+            <p className="material-row-shared">
+              📎 {material.public ? "All students" : (material.linkedStudentIds.length ? `${material.linkedStudentIds.length} student${material.linkedStudentIds.length === 1 ? "" : "s"}` : "Not shared yet")}
+            </p>
+            <div className="material-row-actions">
+              <button type="button" className="booking-row-btn" onClick={() => downloadMaterial(material)}>Download</button>
+              <button type="button" className="booking-row-btn is-danger" onClick={() => setDeleting(material)}>Delete</button>
+            </div>
+          </article>
+        ))}
+        {materials.data && !materials.data.materials.length ? <p className="text-sm text-slate-500">No materials uploaded yet.</p> : null}
+      </div>
+      {deleting ? (
+        <DeleteMaterialModal
+          material={deleting}
+          isPending={deleteMutation.isPending}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => deleteMutation.mutate(deleting.id)}
+        />
+      ) : null}
     </>
   );
 }
