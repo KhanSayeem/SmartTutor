@@ -93,7 +93,7 @@ function StatCard({ label, value, icon: Icon }) {
     <section className="card p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-500">{label}</p>
+          <p className="text-sm font-semibold text-slate-600">{label}</p>
           <p className="mt-2 text-3xl font-extrabold">{value}</p>
         </div>
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-surface-info text-brand-blue">
@@ -108,7 +108,7 @@ function PageTitle({ title, subtitle }) {
   return (
     <div className="mb-6">
       <h1 className="text-3xl font-extrabold">{title}</h1>
-      {subtitle ? <p className="mt-2 max-w-3xl text-sm text-slate-500">{subtitle}</p> : null}
+      {subtitle ? <p className="mt-2 max-w-3xl text-sm text-slate-600">{subtitle}</p> : null}
     </div>
   );
 }
@@ -119,7 +119,7 @@ function Tabs({ tabs, active, onChange }) {
       {tabs.map((tab) => (
         <button key={tab.value} className={cx("btn", active === tab.value ? "btn-primary" : "btn-neutral")} onClick={() => onChange(tab.value)}>
           {tab.label}
-          {tab.count !== undefined ? <span className={cx("pill", active === tab.value ? "bg-white text-brand-blue" : "bg-white text-slate-500")}>{tab.count}</span> : null}
+          {tab.count !== undefined ? <span className={cx("pill", active === tab.value ? "bg-white text-brand-blue" : "bg-white text-slate-600")}>{tab.count}</span> : null}
         </button>
       ))}
     </div>
@@ -188,7 +188,7 @@ function AppShell({ children }) {
                 <div className="dropdown">
                 <div className="bg-surface-info p-4">
                   <p className="font-extrabold">{user.name}</p>
-                  <p className="text-xs font-semibold capitalize text-slate-500">{user.role}</p>
+                  <p className="text-xs font-semibold capitalize text-slate-600">{user.role}</p>
                 </div>
                 <button className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold hover:bg-surface-shell" onClick={() => navigate("/profile")}>
                   <User size={16} /> My Profile
@@ -259,20 +259,20 @@ function LandingPage() {
                   <Avatar user={{ avatar: "MS" }} />
                   <div>
                     <p className="font-extrabold">Dr. Maya Singh</p>
-                    <p className="text-xs font-semibold text-slate-500">Mathematics · Physics</p>
+                    <p className="text-xs font-semibold text-slate-600">Mathematics · Physics</p>
                   </div>
                 </div>
                 <Badge tone="success">Verified</Badge>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-lg bg-surface-info p-3"><p className="font-extrabold">4.9</p><p className="text-xs text-slate-500">Rating</p></div>
-                <div className="rounded-lg bg-surface-info p-3"><p className="font-extrabold">$45</p><p className="text-xs text-slate-500">Per hour</p></div>
-                <div className="rounded-lg bg-surface-info p-3"><p className="font-extrabold">128</p><p className="text-xs text-slate-500">Reviews</p></div>
+                <div className="rounded-lg bg-surface-info p-3"><p className="font-extrabold">4.9</p><p className="text-xs text-slate-600">Rating</p></div>
+                <div className="rounded-lg bg-surface-info p-3"><p className="font-extrabold">$45</p><p className="text-xs text-slate-600">Per hour</p></div>
+                <div className="rounded-lg bg-surface-info p-3"><p className="font-extrabold">128</p><p className="text-xs text-slate-600">Reviews</p></div>
               </div>
             </div>
             <div className="ml-8 rounded-xl bg-white/95 p-5 text-slate-900 shadow-xl">
               <p className="font-extrabold">Booking Submitted!</p>
-              <p className="mt-2 text-sm text-slate-500">Reference ST-1003 · Online session · Aug 3, 4:00 PM</p>
+              <p className="mt-2 text-sm text-slate-600">Reference ST-1003 · Online session · Aug 3, 4:00 PM</p>
             </div>
           </div>
         </section>
@@ -313,7 +313,7 @@ function RegisterPage() {
   return (
     <AuthLayout>
       <h1 className="text-center text-3xl font-extrabold">Create Account</h1>
-      <p className="mt-2 text-center text-sm text-slate-500">Choose a role and start using SmartTutor.</p>
+      <p className="mt-2 text-center text-sm text-slate-600">Choose a role and start using SmartTutor.</p>
       <ErrorNotice error={mutation.error} />
       <form
         className="mt-6 grid gap-4"
@@ -326,7 +326,7 @@ function RegisterPage() {
           {["student", "tutor"].map((item) => (
             <button key={item} type="button" className={cx("card p-4 text-left font-extrabold capitalize", role === item && "border-brand-blue bg-surface-info text-brand-blue")} onClick={() => setRole(item)}>
               {item}
-              <span className="mt-1 block text-xs font-semibold text-slate-500">{item === "student" ? "Book and learn" : "Teach and earn"}</span>
+              <span className="mt-1 block text-xs font-semibold text-slate-600">{item === "student" ? "Book and learn" : "Teach and earn"}</span>
             </button>
           ))}
         </div>
@@ -337,7 +337,7 @@ function RegisterPage() {
         <Button disabled={mutation.isPending}>Create Account</Button>
         <Button type="button" variant="neutral">Continue with Google</Button>
       </form>
-      <p className="mt-5 text-center text-sm text-slate-500">Already registered? <Link className="font-bold text-brand-blue" to="/login">Log in</Link></p>
+      <p className="mt-5 text-center text-sm text-slate-600">Already registered? <Link className="font-bold text-brand-blue" to="/login">Log in</Link></p>
     </AuthLayout>
   );
 }
@@ -368,13 +368,13 @@ function LoginPage({ admin = false }) {
       >
         <Field label="Email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} error={mutation.error?.details?.credentials} required />
         <Field label="Password" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} error={mutation.error?.details?.credentials} required />
-        {!admin ? <Link className="text-right text-sm font-bold text-brand-blue" to="/forgot-password">Forgot password?</Link> : null}
+        {!admin ? <Link className="inline-block -my-3 py-3 text-right text-sm font-bold text-brand-blue" to="/forgot-password">Forgot password?</Link> : null}
         <Button disabled={mutation.isPending}>Log In</Button>
         {!admin ? <Button type="button" variant="neutral">Continue with Google</Button> : null}
       </form>
       <div className="mt-5 flex justify-between text-sm">
-        <Link className="font-bold text-brand-blue" to="/register">Create account</Link>
-        {!admin ? <Link className="font-bold text-brand-blue" to="/admin-login">Admin login</Link> : <Link className="font-bold text-brand-blue" to="/login">User login</Link>}
+        <Link className="inline-block -my-3 py-3 font-bold text-brand-blue" to="/register">Create account</Link>
+        {!admin ? <Link className="inline-block -my-3 py-3 font-bold text-brand-blue" to="/admin-login">Admin login</Link> : <Link className="inline-block -my-3 py-3 font-bold text-brand-blue" to="/login">User login</Link>}
       </div>
     </AuthLayout>
   );
@@ -409,7 +409,7 @@ function ResetPage() {
         )}
         <Button disabled={mutation.isPending}>{token ? "Set New Password" : "Send Reset Link"}</Button>
       </form>
-      <Link className="mt-5 block text-center text-sm font-bold text-brand-blue" to="/login">Back to login</Link>
+      <Link className="mt-5 block py-3 text-center text-sm font-bold text-brand-blue" to="/login">Back to login</Link>
     </AuthLayout>
   );
 }
@@ -429,7 +429,7 @@ function PortalSelectPage() {
         {portals.map((portal) => (
           <Link key={portal.role} to={roleHome[portal.role]} className="card p-5 hover:border-brand-blue">
             <p className="font-extrabold">{portal.label}</p>
-            <p className="mt-1 text-sm text-slate-500">{portal.text}</p>
+            <p className="mt-1 text-sm text-slate-600">{portal.text}</p>
           </Link>
         ))}
       </div>
@@ -1176,7 +1176,7 @@ function TutorProfilePage() {
               <Avatar user={tutor} />
               <div>
                 <h1 className="text-3xl font-extrabold">{tutor.name}</h1>
-                <p className="mt-1 font-semibold text-slate-500">{tutor.subjects?.join(" · ")}</p>
+                <p className="mt-1 font-semibold text-slate-600">{tutor.subjects?.join(" · ")}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Badge tone="success">Verified</Badge>
                   <Badge tone="warning"><Star size={12} fill="currentColor" /> {reviewSummary.average.toFixed(1)} ({reviewSummary.count})</Badge>
@@ -1345,7 +1345,7 @@ function RescheduleModal({ booking, onClose }) {
             </div>
           </>
         ) : slotsByDate.size === 0 ? (
-          <p className="text-sm text-slate-500">This tutor has no other open slots right now.</p>
+          <p className="text-sm text-slate-600">This tutor has no other open slots right now.</p>
         ) : null}
         <p className="booking-label">Session type</p>
         <div className="booking-modes">
@@ -1433,7 +1433,7 @@ function BookingsPage() {
             onCancel={() => setCancelling(booking)}
           />
         ))}
-        {data && !rows.length ? <p className="text-sm text-slate-500">No {status} sessions.</p> : null}
+        {data && !rows.length ? <p className="text-sm text-slate-600">No {status} sessions.</p> : null}
       </div>
       {rescheduling ? <RescheduleModal booking={rescheduling} onClose={() => setRescheduling(null)} /> : null}
       {cancelling ? <CancelModal booking={cancelling} onClose={() => setCancelling(null)} /> : null}
@@ -1550,7 +1550,7 @@ function MessagesPage() {
               <Avatar user={conversation.participant} />
               <span className="min-w-0 flex-1">
                 <span className="block font-extrabold">{conversation.participant.name}</span>
-                <span className="block truncate text-sm text-slate-500">{conversation.lastMessage?.body}</span>
+                <span className="block truncate text-sm text-slate-600">{conversation.lastMessage?.body}</span>
               </span>
               {conversation.unreadCount ? <Badge tone="warning">{conversation.unreadCount}</Badge> : null}
             </button>
@@ -1630,7 +1630,7 @@ function TutorDashboardPage() {
             {pending.map((booking) => (
               <article key={booking.id} className="rounded-xl border border-surface-border p-4">
                 <div className="flex items-center justify-between gap-3"><p className="font-extrabold">{booking.student.name}</p><StatusBadge status={booking.status} /></div>
-                <p className="mt-1 text-sm text-slate-500">{booking.subject} · {booking.date} · {booking.startTime}</p>
+                <p className="mt-1 text-sm text-slate-600">{booking.subject} · {booking.date} · {booking.startTime}</p>
                 <div className="mt-3 flex gap-2">
                   <Button variant="success" onClick={() => mutation.mutate({ id: booking.id, action: "accept" })}>Accept</Button>
                   <Button variant="danger" onClick={() => mutation.mutate({ id: booking.id, action: "reject" })}>Decline</Button>
@@ -1645,7 +1645,7 @@ function TutorDashboardPage() {
             {today.map((booking) => (
               <article key={booking.id} className="rounded-xl border border-surface-border p-4">
                 <p className="font-extrabold">{booking.subject} with {booking.student.name}</p>
-                <p className="mt-1 text-sm text-slate-500">{booking.startTime}-{booking.endTime} · {booking.mode}</p>
+                <p className="mt-1 text-sm text-slate-600">{booking.startTime}-{booking.endTime} · {booking.mode}</p>
                 <Button className="mt-3" onClick={() => mutation.mutate({ id: booking.id, action: "complete" })}>Start Session</Button>
               </article>
             ))}
@@ -1677,7 +1677,7 @@ function DeleteMaterialModal({ material, onClose, onConfirm, isPending }) {
       <div className="cancel-modal">
         <h3 className="reschedule-modal-title">Delete Material</h3>
         <p className="reschedule-modal-subtitle">{material.title}</p>
-        <p className="text-sm text-slate-500 mt-4">This removes the file for every student it is linked to. This can&rsquo;t be undone.</p>
+        <p className="text-sm text-slate-600 mt-4">This removes the file for every student it is linked to. This can&rsquo;t be undone.</p>
         <div className="reschedule-modal-actions">
           <button type="button" className="btn btn-neutral" onClick={onClose}>Keep File</button>
           <button type="button" className="btn btn-danger" disabled={isPending} onClick={onConfirm}>
@@ -1800,7 +1800,7 @@ function MaterialsPage() {
                   <input type="checkbox" checked={linkedStudentIds.includes(student.id)} onChange={() => toggleStudent(student.id)} />
                   {student.name}
                 </label>
-              )) : <p className="text-sm text-slate-500">No students yet — this will save as unshared until you have a booking.</p>}
+              )) : <p className="text-sm text-slate-600">No students yet — this will save as unshared until you have a booking.</p>}
             </div>
           ) : null}
           <div className="materials-upload-actions">
@@ -1833,7 +1833,7 @@ function MaterialsPage() {
             </div>
           </article>
         ))}
-        {materials.data && !materials.data.materials.length ? <p className="text-sm text-slate-500">No materials uploaded yet.</p> : null}
+        {materials.data && !materials.data.materials.length ? <p className="text-sm text-slate-600">No materials uploaded yet.</p> : null}
       </div>
       {deleting ? (
         <DeleteMaterialModal
@@ -1884,7 +1884,7 @@ function StudentProgressPage() {
             </div>
           </div>
         ))}
-        {data && !data.subjects.length ? <p className="text-sm text-slate-500">No completed sessions yet.</p> : null}
+        {data && !data.subjects.length ? <p className="text-sm text-slate-600">No completed sessions yet.</p> : null}
       </div>
       <h2 className="section-heading">Recent Session History</h2>
       <div className="session-history-list">
@@ -1898,7 +1898,7 @@ function StudentProgressPage() {
             {session.rating ? <span className="session-history-badge">{session.rating}/5 ★</span> : null}
           </article>
         ))}
-        {data && !data.history.length ? <p className="text-sm text-slate-500">No completed sessions yet.</p> : null}
+        {data && !data.history.length ? <p className="text-sm text-slate-600">No completed sessions yet.</p> : null}
       </div>
     </>
   );
@@ -1929,7 +1929,7 @@ function EarningsPage() {
                 <span className="earnings-bar-month">{item.month}</span>
               </div>
             ))}
-            {data && !data.monthly.length ? <p className="text-sm text-slate-500">No paid sessions yet.</p> : null}
+            {data && !data.monthly.length ? <p className="text-sm text-slate-600">No paid sessions yet.</p> : null}
           </div>
         </section>
         <section className="earnings-txn-card">
@@ -1940,12 +1940,12 @@ function EarningsPage() {
           {(data?.transactions || []).slice(0, 8).map((transaction) => (
             <div key={transaction.id} className="earnings-txn-row">
               <span>{transaction.student?.name}</span>
-              <span className="text-slate-500">{transaction.subject}</span>
+              <span className="text-slate-600">{transaction.subject}</span>
               <span className="font-bold">${transaction.amount}</span>
               <StatusBadge status={transaction.status} />
             </div>
           ))}
-          {data && !data.transactions.length ? <p className="text-sm text-slate-500">No transactions yet.</p> : null}
+          {data && !data.transactions.length ? <p className="text-sm text-slate-600">No transactions yet.</p> : null}
         </section>
       </div>
     </>
@@ -1971,7 +1971,7 @@ function InvoicesPage() {
     <>
       <PageTitle title="Student Invoices" subtitle="Download real receipt data generated from paid transactions." />
       <section className="card mb-5 p-5">
-        <p className="text-sm font-semibold text-slate-500">Total paid</p>
+        <p className="text-sm font-semibold text-slate-600">Total paid</p>
         <p className="mt-1 text-3xl font-extrabold">${data?.total || 0}</p>
       </section>
       <section className="card table-wrap">
@@ -2077,7 +2077,7 @@ function AdminDashboardPage() {
                   <td>{item.joinedAt}</td>
                   <td className="flex flex-wrap gap-2">
                     {item.id === currentAdmin.id ? (
-                      <span className="text-xs font-semibold text-slate-500">This is you</span>
+                      <span className="text-xs font-semibold text-slate-600">This is you</span>
                     ) : (
                       <>
                         <Button variant="secondary" onClick={() => setEditing(item)}>Edit</Button>
@@ -2107,7 +2107,7 @@ function AdminDashboardPage() {
       </section>
       <section className="card p-5">
         <h2 className="mb-4 text-xl font-extrabold">Reports</h2>
-        {(reports.data?.reports || []).length ? reports.data.reports.map((report) => <div key={report.id} className="rounded-lg bg-surface-danger p-3 text-sm text-status-danger">{report.body}</div>) : <p className="text-sm text-slate-500">No flagged messages.</p>}
+        {(reports.data?.reports || []).length ? reports.data.reports.map((report) => <div key={report.id} className="rounded-lg bg-surface-danger p-3 text-sm text-status-danger">{report.body}</div>) : <p className="text-sm text-slate-600">No flagged messages.</p>}
       </section>
     </>
   );

@@ -11,11 +11,11 @@
   --border: #e0e4e9;
   --shell: #f3f4f6;
   --card: #ffffff;
-  --success: #10b981;
+  --success: #047857;
   --success-bg: #e5fff2;
-  --warning: #f59e0b;
+  --warning: #92400e;
   --warning-bg: #fff7e0;
-  --danger: #ef4444;
+  --danger: #b91c1c;
   --danger-bg: #fff2f2;
   --info-bg: #eff6ff;
   --student-bg: #edf0f7;
@@ -84,7 +84,7 @@ textarea {
 }
 
 .btn {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   border-radius: 8px;
   display: inline-flex;
@@ -157,6 +157,8 @@ textarea {
   font-size: 18px;
   font-weight: 800;
   white-space: nowrap;
+  padding: 4px 0;
+  margin: -4px 0;
 }
 
 .brand-logo span {
@@ -196,7 +198,8 @@ textarea {
   border-radius: 12px;
   background: transparent;
   color: var(--muted);
-  padding: 0;
+  padding: 4px;
+  margin: -4px;
   cursor: pointer;
 }
 

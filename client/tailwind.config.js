@@ -11,9 +11,9 @@ export default {
           navy: "#1E3A5F"
         },
         status: {
-          success: "#10B981",
-          warning: "#F59E0B",
-          danger: "#EF4444"
+          success: "#047857",
+          warning: "#92400E",
+          danger: "#B91C1C"
         },
         surface: {
           shell: "#F3F4F6",
