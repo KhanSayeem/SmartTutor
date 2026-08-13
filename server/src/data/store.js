@@ -4,6 +4,18 @@ import { nanoid } from "nanoid";
 const passwordHash = bcrypt.hashSync("Password123!", 10);
 const now = new Date("2026-07-31T03:00:00.000Z");
 
+// Anchors one seeded booking to "shortly from whenever this process boots"
+// instead of a fixed 2026 date, so the reminder scheduler always has a real,
+// currently-upcoming confirmed session to demonstrate against.
+function relativeSession(hoursFromNow) {
+  const at = new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
+  const pad = (value) => String(value).padStart(2, "0");
+  const date = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+  const startTime = `${pad(at.getHours())}:00`;
+  const endTime = `${pad((at.getHours() + 1) % 24)}:00`;
+  return { date, startTime, endTime };
+}
+
 const users = [
   {
     id: "u-student",
@@ -260,6 +272,18 @@ const bookings = [
     status: "completed",
     notes: "Timed practice on past-paper algebra questions.",
     createdAt: "2026-07-29T08:00:00.000Z"
+  },
+  {
+    id: "bk-0989",
+    reference: "ST-0989",
+    studentId: "u-student",
+    tutorId: "u-tutor",
+    subject: "Physics",
+    ...relativeSession(20),
+    mode: "Online",
+    amount: 45,
+    status: "confirmed",
+    createdAt: new Date().toISOString()
   }
 ];
 
