@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api.js";
+import { api, uploadWithProgress } from "./api.js";
 import { useAuthStore } from "./authStore.js";
 import { useBookingDraft } from "./bookingDraft.js";
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "./router.jsx";
@@ -1546,13 +1546,16 @@ function MessagesPage() {
     if (activeId && event.target.value.trim()) typingMutation.mutate();
   };
 
+  const [uploadProgress, setUploadProgress] = useState(null);
   const attachMutation = useMutation({
     mutationFn: (file) => {
       const form = new FormData();
       form.append("file", file);
-      return api(`/messages/conversations/${activeId}/attachments`, { method: "POST", body: form });
+      setUploadProgress(0);
+      return uploadWithProgress(`/messages/conversations/${activeId}/attachments`, form, setUploadProgress);
     },
-    onSuccess: (data) => setPendingAttachments((current) => [...current, data.attachment])
+    onSuccess: (data) => setPendingAttachments((current) => [...current, data.attachment]),
+    onSettled: () => setUploadProgress(null)
   });
   const onPickFile = (event) => {
     const file = event.target.files?.[0];
@@ -1647,6 +1650,12 @@ function MessagesPage() {
             {peerTyping ? <div className="chat-typing" aria-label="Typing"><span /><span /><span /></div> : null}
             <div ref={bottomRef} />
           </div>
+          {uploadProgress !== null ? (
+            <div className="chat-upload-progress" role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100}>
+              <div className="chat-upload-progress-bar" style={{ width: `${uploadProgress}%` }} />
+              <span className="chat-upload-progress-label">Uploading… {uploadProgress}%</span>
+            </div>
+          ) : null}
           {pendingAttachments.length ? (
             <div className="chat-pending-attachments">
               {pendingAttachments.map((attachment) => (

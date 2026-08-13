@@ -37,3 +37,29 @@ export async function api(path, options = {}) {
 export function downloadUrl(path) {
   return `${API_URL}${path}`;
 }
+
+// fetch() exposes no upload progress event, so a real (non-fake-animation)
+// progress bar needs XMLHttpRequest's upload.onprogress instead.
+export function uploadWithProgress(path, form, onProgress) {
+  const token = localStorage.getItem("smarttutor.token");
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}${path}`);
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => {
+      let payload = {};
+      try {
+        payload = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch (_error) {
+        payload = {};
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(payload);
+      else reject(new ApiError(payload.message || "Request failed", payload.details, xhr.status));
+    };
+    xhr.onerror = () => reject(new ApiError("Network error during upload", undefined, 0));
+    xhr.send(form);
+  });
+}

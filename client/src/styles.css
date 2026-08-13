@@ -1746,6 +1746,34 @@ th {
   30% { opacity: 1; transform: translateY(-3px); }
 }
 
+.chat-upload-progress {
+  position: relative;
+  margin: 0 24px 10px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--shell);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.chat-upload-progress-bar {
+  height: 100%;
+  background: var(--blue);
+  transition: width 0.15s ease-out;
+}
+
+.chat-upload-progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .chat-pending-attachments {
   display: flex;
   flex-wrap: wrap;
