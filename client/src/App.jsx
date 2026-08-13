@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api.js";
 import { useAuthStore } from "./authStore.js";
+import { useBookingDraft } from "./bookingDraft.js";
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "./router.jsx";
 
 const roleHome = {
@@ -594,66 +595,291 @@ function TutorSearchPage() {
     </div>
   );
 }
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function toISODate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function parseISODate(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+// Figma node 9:166 shows a Monday-anchored two-week window, so anchor it on the
+// week that actually holds the tutor's earliest open slot rather than on today.
+function buildCalendarDays(openDates) {
+  const anchor = openDates.length ? parseISODate(openDates[0]) : new Date();
+  const offsetToMonday = (anchor.getDay() + 6) % 7;
+  const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - offsetToMonday);
+  return Array.from({ length: 14 }, (_, index) => {
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+    return { iso: toISODate(day), label: day.getDate() };
+  });
+}
+
 function BookingWidget({ tutor, availability }) {
-  const [slotId, setSlotId] = useState(availability?.[0]?.id || "");
+  const openSlots = useMemo(
+    () => [...availability].sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
+    [availability]
+  );
+  const slotsByDate = useMemo(() => {
+    const map = new Map();
+    for (const slot of openSlots) {
+      if (!map.has(slot.date)) map.set(slot.date, []);
+      map.get(slot.date).push(slot);
+    }
+    return map;
+  }, [openSlots]);
+  const days = useMemo(() => buildCalendarDays([...slotsByDate.keys()]), [slotsByDate]);
+
+  const [selectedDate, setSelectedDate] = useState(openSlots[0]?.date || "");
+  const [slotId, setSlotId] = useState(openSlots[0]?.id || "");
   const [mode, setMode] = useState("Online");
   const [subject, setSubject] = useState(tutor.subjects?.[0] || "");
+  const setDraft = useBookingDraft((state) => state.setDraft);
+  const navigate = useNavigate();
+
+  const daySlots = slotsByDate.get(selectedDate) || [];
+  const selected = daySlots.find((slot) => slot.id === slotId) || daySlots[0];
+
+  const pickDate = (iso) => {
+    setSelectedDate(iso);
+    setSlotId(slotsByDate.get(iso)?.[0]?.id || "");
+  };
+
+  const continueToBook = () => {
+    if (!selected) return;
+    setDraft({
+      tutorId: tutor.id,
+      slotId: selected.id,
+      date: selected.date,
+      startTime: selected.startTime,
+      endTime: selected.endTime,
+      mode,
+      subject
+    });
+    navigate(`/book/${tutor.id}`);
+  };
+
+  return (
+    <aside className="booking-card">
+      <h2 className="booking-card-title">Book a Session</h2>
+      <p className="booking-label">Select a date</p>
+      <div className="booking-calendar">
+        <div className="booking-weekdays">
+          {WEEKDAYS.map((day) => <span key={day} className="booking-weekday">{day}</span>)}
+        </div>
+        <div className="booking-days">
+          {days.map((day) => {
+            const isAvailable = slotsByDate.has(day.iso);
+            const isSelected = isAvailable && day.iso === selectedDate;
+            return (
+              <button
+                key={day.iso}
+                type="button"
+                disabled={!isAvailable}
+                aria-pressed={isSelected}
+                className={cx("booking-day", isAvailable && "is-available", isSelected && "is-selected")}
+                onClick={() => pickDate(day.iso)}
+              >
+                <span className="booking-day-number">{day.label}</span>
+                {isAvailable ? <span className="booking-day-dot" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {daySlots.length ? (
+        <>
+          <p className="booking-label">Available times</p>
+          <div className="booking-chips">
+            {daySlots.map((slot) => (
+              <button
+                key={slot.id}
+                type="button"
+                className={cx("booking-chip", selected?.id === slot.id && "is-active")}
+                onClick={() => setSlotId(slot.id)}
+              >
+                {slot.startTime}–{slot.endTime}
+              </button>
+            ))}
+          </div>
+          <p className="booking-label">Subject</p>
+          <div className="booking-chips">
+            {tutor.subjects?.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={cx("booking-chip", subject === item && "is-active")}
+                onClick={() => setSubject(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+      <p className="booking-label">Session type</p>
+      <div className="booking-modes">
+        {[["Online", "🖥"], ["In-Person", "📍"]].map(([item, icon]) => (
+          <button
+            key={item}
+            type="button"
+            className={cx("booking-mode", mode === item && "is-active")}
+            onClick={() => setMode(item)}
+          >
+            <span aria-hidden="true">{icon}</span> {item}
+          </button>
+        ))}
+      </div>
+      <button className="booking-cta" type="button" disabled={!selected} onClick={continueToBook}>
+        Continue to Book →
+      </button>
+      <p className="booking-note">
+        {openSlots.length ? "No payment required until confirmed" : "This tutor has no open slots right now"}
+      </p>
+    </aside>
+  );
+}
+
+const BOOKING_STEPS = ["1. Select Date", "2. Choose Slot", "3. Confirm"];
+
+// Figma node 10:15. The file only defines completed (#10B981) and active
+// (#2563EB) pills; the upcoming state is derived from the shell/muted tokens.
+function BookingSteps({ current }) {
+  return (
+    <nav className="booking-steps" aria-label="Booking progress">
+      <ol className="booking-steps-track">
+        {BOOKING_STEPS.map((label, index) => (
+          <li key={label} className="booking-step-item">
+            <span
+              className={cx("booking-step", index < current && "is-complete", index === current && "is-active")}
+              aria-current={index === current ? "step" : undefined}
+            >
+              {label}
+            </span>
+            {index < BOOKING_STEPS.length - 1 ? (
+              <span aria-hidden="true" className={cx("booking-step-connector", index < current && "is-complete")} />
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+function formatBookingDate(iso) {
+  const date = parseISODate(iso);
+  return date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function formatBookingTime(startTime, endTime) {
+  const to12Hour = (value) => {
+    const [hour, minute] = value.split(":").map(Number);
+    const suffix = hour >= 12 ? "PM" : "AM";
+    return `${((hour + 11) % 12) + 1}:${String(minute).padStart(2, "0")} ${suffix}`;
+  };
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+  const minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+  const hours = minutes / 60;
+  const duration = minutes % 60 === 0 ? `${hours} ${hours === 1 ? "hour" : "hours"}` : `${minutes} minutes`;
+  return `${to12Hour(startTime)} – ${to12Hour(endTime)} (${duration})`;
+}
+
+// Figma node 10:24 (summary card) and 10:47 (confirmation modal).
+function BookSessionPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { draft, clearDraft } = useBookingDraft();
   const [confirmed, setConfirmed] = useState(null);
   const queryClient = useQueryClient();
-  const selected = availability.find((slot) => slot.id === slotId);
+  const { data, isLoading } = useQuery({ queryKey: ["tutor", id], queryFn: () => api(`/tutors/${id}`) });
   const mutation = useMutation({
     mutationFn: () =>
       api("/bookings", {
         method: "POST",
-        body: { tutorId: tutor.id, subject, date: selected.date, startTime: selected.startTime, endTime: selected.endTime, mode }
+        body: {
+          tutorId: id,
+          subject: draft.subject,
+          date: draft.date,
+          startTime: draft.startTime,
+          endTime: draft.endTime,
+          mode: draft.mode
+        }
       }),
-    onSuccess: (data) => {
-      setConfirmed(data.booking);
-      queryClient.invalidateQueries({ queryKey: ["tutor", tutor.id] });
+    onSuccess: (result) => {
+      setConfirmed(result.booking);
+      clearDraft();
+      queryClient.invalidateQueries({ queryKey: ["tutor", id] });
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
     }
   });
 
-  return (
-    <aside className="card p-5">
-      <h2 className="text-xl font-extrabold">Book a Session</h2>
-      <ErrorNotice error={mutation.error} />
-      <div className="mt-4 grid gap-3">
-        <label>
-          <span className="mb-2 block text-sm font-bold">Available slot</span>
-          <select className="field" value={slotId} onChange={(event) => setSlotId(event.target.value)}>
-            {availability.map((slot) => <option key={slot.id} value={slot.id}>{slot.date} · {slot.startTime}</option>)}
-          </select>
-        </label>
-        <label>
-          <span className="mb-2 block text-sm font-bold">Subject</span>
-          <select className="field" value={subject} onChange={(event) => setSubject(event.target.value)}>
-            {tutor.subjects?.map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {["Online", "In-Person"].map((item) => (
-            <button key={item} type="button" className={cx("btn", mode === item ? "btn-primary" : "btn-neutral")} onClick={() => setMode(item)}>{item}</button>
-          ))}
-        </div>
-        <div className="rounded-xl bg-surface-shell p-4 text-sm">
-          <p className="font-extrabold">Review & Confirm</p>
-          <p className="mt-1 text-slate-500">{selected ? `${selected.date}, ${selected.startTime}-${selected.endTime}` : "No slots available"}</p>
-          <p className="mt-1 text-slate-500">${tutor.price} · {subject}</p>
-        </div>
-        <Button disabled={!selected || mutation.isPending} onClick={() => mutation.mutate()}>Continue to Book</Button>
-      </div>
-      {confirmed ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-slate-900/45 p-4">
-          <div className="card max-w-md p-7 text-center shadow-lg">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-surface-success text-status-success"><Check size={30} /></div>
-            <h3 className="mt-4 text-2xl font-extrabold">Booking Submitted!</h3>
-            <p className="mt-2 text-sm text-slate-500">Reference {confirmed.reference}</p>
-            <Link className="btn btn-primary mt-5" to="/bookings">Go to My Bookings</Link>
+  if (isLoading) return <p>Loading booking details...</p>;
+  if (confirmed) {
+    return (
+      <>
+        <BookingSteps current={3} />
+        <div className="booking-modal-scrim">
+          <div className="booking-modal">
+            <div className="booking-modal-icon"><Check size={36} strokeWidth={3} /></div>
+            <h3 className="booking-modal-title">Booking Submitted!</h3>
+            <p className="booking-modal-body">
+              Your request has been sent to {data.tutor.name}.<br />They will respond within 24 hours.
+            </p>
+            <div className="booking-modal-divider" />
+            <p className="booking-modal-caption">Booking Reference</p>
+            <p className="booking-modal-reference">#{confirmed.reference}</p>
+            <Link className="booking-modal-cta" to="/bookings">Go to My Bookings</Link>
           </div>
         </div>
-      ) : null}
-    </aside>
+      </>
+    );
+  }
+  if (!draft || draft.tutorId !== id) {
+    return (
+      <div className="booking-summary">
+        <h2 className="booking-summary-title">Pick a session first</h2>
+        <p className="booking-summary-note">Choose a date and time on the tutor profile to review your booking.</p>
+        <button className="booking-summary-confirm" type="button" onClick={() => navigate(`/tutors/${id}`)}>
+          Back to tutor profile
+        </button>
+      </div>
+    );
+  }
+
+  const { tutor } = data;
+  return (
+    <>
+      <BookingSteps current={2} />
+      <section className="booking-summary" aria-labelledby="booking-summary-title">
+        <h2 className="booking-summary-title" id="booking-summary-title">Review &amp; Confirm</h2>
+        <div className="booking-summary-divider" />
+        <div className="booking-summary-tutor">
+          <span className="booking-summary-avatar">{tutor.avatar || tutor.name?.slice(0, 2).toUpperCase()}</span>
+          <div>
+            <p className="booking-summary-tutor-name">{tutor.name}</p>
+            <p className="booking-summary-tutor-subjects">{tutor.subjects?.join(" • ")}</p>
+          </div>
+        </div>
+        <div className="booking-summary-divider" />
+        <ErrorNotice error={mutation.error} />
+        <dl className="booking-summary-rows">
+          <div className="booking-summary-row"><dt>Date</dt><dd>{formatBookingDate(draft.date)}</dd></div>
+          <div className="booking-summary-row"><dt>Time</dt><dd>{formatBookingTime(draft.startTime, draft.endTime)}</dd></div>
+          <div className="booking-summary-row"><dt>Session Type</dt><dd>{draft.mode === "Online" ? "Online (Video Call)" : "In-Person"}</dd></div>
+          <div className="booking-summary-row"><dt>Subject</dt><dd>{draft.subject}</dd></div>
+          <div className="booking-summary-row"><dt>Price</dt><dd className="is-price">${Number(tutor.price || 0).toFixed(2)}</dd></div>
+        </dl>
+        <div className="booking-summary-divider" />
+        <button className="booking-summary-confirm" type="button" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+          {mutation.isPending ? "Confirming..." : "Confirm Booking"}
+        </button>
+        <p className="booking-summary-note">You won&rsquo;t be charged until the tutor accepts</p>
+      </section>
+    </>
   );
 }
 
@@ -758,7 +984,7 @@ function TutorProfilePage() {
   const { tutor, availability, reviews, reviewSummary } = data;
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="tutor-profile-page grid gap-10 lg:grid-cols-[minmax(0,700px)_540px]">
         <section className="card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex gap-4">
@@ -1152,6 +1378,7 @@ function App() {
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/search" element={<ProtectedRoute roles={["student"]}><TutorSearchPage /></ProtectedRoute>} />
       <Route path="/tutors/:id" element={<ProtectedRoute roles={["student"]}><TutorProfilePage /></ProtectedRoute>} />
+      <Route path="/book/:id" element={<ProtectedRoute roles={["student"]}><BookSessionPage /></ProtectedRoute>} />
       <Route path="/bookings" element={<ProtectedRoute roles={["student"]}><BookingsPage /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute roles={["student", "tutor"]}><MessagesPage /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute roles={["student"]}><StudentProgressPage /></ProtectedRoute>} />

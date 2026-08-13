@@ -92,7 +92,13 @@ const availability = [
   { id: "slot-1", tutorId: "u-tutor", date: "2026-08-03", startTime: "16:00", endTime: "17:00", mode: "Online", booked: false },
   { id: "slot-2", tutorId: "u-tutor", date: "2026-08-04", startTime: "18:00", endTime: "19:00", mode: "Online", booked: false },
   { id: "slot-3", tutorId: "u-tutor", date: "2026-08-05", startTime: "17:00", endTime: "18:00", mode: "In-Person", booked: false },
-  { id: "slot-4", tutorId: "u-tutor-2", date: "2026-08-06", startTime: "19:00", endTime: "20:00", mode: "Online", booked: false }
+  { id: "slot-4", tutorId: "u-tutor-2", date: "2026-08-06", startTime: "19:00", endTime: "20:00", mode: "Online", booked: false },
+  { id: "slot-5", tutorId: "u-tutor", date: "2026-08-05", startTime: "19:00", endTime: "20:00", mode: "Online", booked: false },
+  { id: "slot-6", tutorId: "u-tutor", date: "2026-08-07", startTime: "16:00", endTime: "17:00", mode: "Online", booked: false },
+  { id: "slot-7", tutorId: "u-tutor", date: "2026-08-10", startTime: "16:00", endTime: "17:00", mode: "Online", booked: false },
+  { id: "slot-8", tutorId: "u-tutor", date: "2026-08-12", startTime: "18:00", endTime: "19:00", mode: "In-Person", booked: false },
+  { id: "slot-9", tutorId: "u-tutor", date: "2026-08-14", startTime: "17:00", endTime: "18:00", mode: "Online", booked: false },
+  { id: "slot-10", tutorId: "u-tutor-2", date: "2026-08-11", startTime: "19:00", endTime: "20:00", mode: "Online", booked: false }
 ];
 
 const bookings = [
@@ -327,8 +333,14 @@ export const store = {
     ["u-student", { online: true, updatedAt: now.toISOString() }],
     ["u-tutor", { online: true, updatedAt: now.toISOString() }]
   ]),
+  // Derive from the highest reference in play; a length-based counter repeats
+  // itself as soon as the booking list is filtered or trimmed.
   nextReference() {
-    return `ST-${1000 + this.bookings.length + 1}`;
+    const highest = this.bookings.reduce((max, booking) => {
+      const value = Number(String(booking.reference || "").replace("ST-", ""));
+      return Number.isFinite(value) && value > max ? value : max;
+    }, 1000);
+    return `ST-${highest + 1}`;
   },
   userPublic(user) {
     if (!user) return null;
