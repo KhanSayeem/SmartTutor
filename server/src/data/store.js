@@ -569,6 +569,15 @@ export const store = {
     const summary = this.reviewSummary(safeUser.id);
     return { ...safeUser, rating: summary.average, reviewCount: summary.count };
   },
+  // userPublic() only strips passwordHash -- email, phone, subjects, and
+  // joinedAt all stay in. Fine for a viewer with an actual relationship to
+  // the subject, but a review author is rendered to every authenticated user
+  // browsing a public tutor profile, with no relationship required. This is
+  // the minimal shape safe for that audience.
+  reviewerPublic(user) {
+    if (!user) return null;
+    return { id: user.id, name: user.name, avatar: user.avatar, avatarUrl: user.avatarUrl };
+  },
   // Only reviews attached to a completed booking with the same tutor count as real feedback.
   tutorReviews(tutorId) {
     return this.reviews

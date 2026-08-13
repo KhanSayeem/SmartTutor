@@ -50,7 +50,7 @@ tutorsRouter.get("/:id", requireAuth, (req, res, next) => {
       const booking = store.bookings.find((item) => item.id === review.bookingId);
       return {
         ...review,
-        student: store.userPublic(store.findUser(review.studentId)),
+        student: store.reviewerPublic(store.findUser(review.studentId)),
         booking: booking ? { id: booking.id, subject: booking.subject, date: booking.date, mode: booking.mode } : null
       };
     });

@@ -2063,13 +2063,16 @@ function AdminDashboardPage() {
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+            <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Subjects</th><th>Price</th><th>Rating</th><th>Status</th><th>Joined</th><th></th></tr></thead>
             <tbody>
               {(users.data?.users || []).map((item) => (
                 <tr key={item.id}>
                   <td><span className="flex items-center gap-2"><Avatar user={item} /> <b>{item.name}</b></span></td>
                   <td>{item.email}</td>
                   <td><Badge tone={item.role === "student" ? "student" : "info"}>{item.role}</Badge></td>
+                  <td>{item.subjects?.length ? item.subjects.join(", ") : "—"}</td>
+                  <td>{item.role === "tutor" ? `$${item.price}/hr` : "—"}</td>
+                  <td>{item.role === "tutor" ? `${item.rating?.toFixed(1)} (${item.reviewCount})` : "—"}</td>
                   <td><StatusBadge status={item.active ? "active" : "disabled"} /></td>
                   <td>{item.joinedAt}</td>
                   <td className="flex flex-wrap gap-2">
