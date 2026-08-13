@@ -1859,9 +1859,49 @@ function InvoicesPage() {
   );
 }
 
+const ADMIN_ROLES = ["student", "tutor", "admin"];
+
+// Figma node 112:54. No dedicated edit-modal frame exists for this button, so
+// the modal itself follows the established scrim/card token system used by
+// the booking reschedule/cancel modals.
+function EditUserModal({ user, onClose }) {
+  const [role, setRole] = useState(user.role);
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () => api(`/admin/users/${user.id}`, { method: "PATCH", body: { role } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      onClose();
+    }
+  });
+  return (
+    <div className="booking-modal-scrim">
+      <div className="cancel-modal">
+        <h3 className="reschedule-modal-title">Edit User</h3>
+        <p className="reschedule-modal-subtitle">{user.name} · {user.email}</p>
+        <ErrorNotice error={mutation.error} />
+        <label className="block mt-4">
+          <span className="mb-2 block text-sm font-bold">Role</span>
+          <select className="field" value={role} onChange={(event) => setRole(event.target.value)}>
+            {ADMIN_ROLES.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </label>
+        <div className="reschedule-modal-actions">
+          <button type="button" className="btn btn-neutral" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-primary" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? "Saving..." : "Save Role"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboardPage() {
+  const { user: currentAdmin } = useAuthStore();
   const queryClient = useQueryClient();
   const [role, setRole] = useState("all");
+  const [editing, setEditing] = useState(null);
   const stats = useQuery({ queryKey: ["admin-stats"], queryFn: () => api("/admin/stats") });
   const users = useQuery({ queryKey: ["admin-users", role], queryFn: () => api(`/admin/users?role=${role}`) });
   const transactions = useQuery({ queryKey: ["admin-transactions"], queryFn: () => api("/admin/transactions") });
@@ -1895,13 +1935,23 @@ function AdminDashboardPage() {
                   <td><Badge tone={item.role === "student" ? "student" : "info"}>{item.role}</Badge></td>
                   <td><StatusBadge status={item.active ? "active" : "disabled"} /></td>
                   <td>{item.joinedAt}</td>
-                  <td><Button variant={item.active ? "danger" : "success"} onClick={() => userMutation.mutate({ id: item.id, active: !item.active })}>{item.active ? "Disable" : "Enable"}</Button></td>
+                  <td className="flex flex-wrap gap-2">
+                    {item.id === currentAdmin.id ? (
+                      <span className="text-xs font-semibold text-slate-500">This is you</span>
+                    ) : (
+                      <>
+                        <Button variant="secondary" onClick={() => setEditing(item)}>Edit</Button>
+                        <Button variant={item.active ? "danger" : "success"} onClick={() => userMutation.mutate({ id: item.id, active: !item.active })}>{item.active ? "Disable" : "Enable"}</Button>
+                      </>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+      {editing ? <EditUserModal user={editing} onClose={() => setEditing(null)} /> : null}
       <section className="card mb-5 p-5">
         <h2 className="mb-4 text-xl font-extrabold">Payment Management</h2>
         <div className="table-wrap">

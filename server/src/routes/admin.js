@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { store } from "../data/store.js";
 import { permit, requireAuth } from "../middleware/auth.js";
-import { notFound } from "../utils/errors.js";
+import { badRequest, notFound } from "../utils/errors.js";
 
 export const adminRouter = Router();
 
@@ -50,6 +50,11 @@ adminRouter.patch("/users/:id", (req, res, next) => {
       .parse(req.body);
     const user = store.findUser(req.params.id);
     if (!user) throw notFound("User not found");
+    // An admin editing their own role/active status can lock every admin out
+    // of the panel with one request -- there is no recovery path in this app.
+    if (user.id === req.user.id && ((payload.role && payload.role !== user.role) || payload.active === false)) {
+      throw badRequest("You cannot change your own role or disable your own account");
+    }
     if (payload.role) user.role = payload.role;
     if (payload.active !== undefined) user.active = payload.active;
     res.json({ user: store.userPublic(user) });
