@@ -2,7 +2,7 @@
 
 This documents every collection actually implemented in the running app, read
 directly from `server/src/data/store.js` and the routes that mutate it. It is
-current as of commit `2ea69de` on `codex/issue-64-reviews-tab`.
+current as of commit `ea5947d` on `main` / `codex/issue-64-reviews-tab`.
 
 ## Storage reality
 
@@ -142,7 +142,7 @@ fixed in this branch, see commit `28505e1`.)
 | `conversationId` | string | FK → `conversations.id` |
 | `senderId` | string | FK → `users.id`, must be a participant |
 | `body` | string | |
-| `attachments` | array, currently always `[]` | Accepted by the API shape but no upload path produces one yet — file attachments are issue #47 |
+| `attachments` | array of `{title, url, mimeType?, size?}` | Uploaded via `POST /messages/conversations/:id/attachments` (#47), then included on send. `body` is optional as long as at least one attachment is present |
 | `flagged` | boolean | |
 | `flagReason` | string, optional | Set with `flagged` |
 | `createdAt` | ISO datetime | |
@@ -235,11 +235,13 @@ rather than two named fields for exactly that reason).
 
 ## Differences from the original ICT301 ERD
 
-**Not available for comparison.** The original ICT301 ERD is not present in
-this repository, and I have not seen it — the backlog PDF
+**Not available for comparison, and out of scope by repo-owner decision
+(2026-08-14).** The original ICT301 ERD is not present in this repository,
+and I have not seen it — the backlog PDF
 (`SmartTutor_ICT302_Implementation_Backlog.pdf`) that drove the rest of this
 project's seed data and issue tracker is the only source document I have
-access to. If you can supply the ERD (file, image, or pasted description),
-I'll produce the actual field-by-field diff this criterion asks for. Until
-then, this section stays open rather than guessing at differences from a
-document I've never read.
+access to. Rather than guess at differences from a document I've never read,
+this criterion was dropped from #56's scope; this document stands as the
+complete as-built schema on its own. If the ERD becomes available later, the
+diff described by the original criterion can still be produced against this
+document at that point.
