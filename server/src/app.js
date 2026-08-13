@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import multer from "multer";
 import { ZodError } from "zod";
 import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
@@ -42,6 +43,14 @@ export function createApp() {
         message: "Validation failed",
         details: Object.fromEntries(error.issues.map((issue) => [issue.path.join("."), issue.message]))
       });
+    }
+
+    // Multer throws for oversized/malformed uploads before a route handler
+    // (and its own validateUpload() 400) ever runs, so it previously fell
+    // through to the generic 500 branch below.
+    if (error instanceof multer.MulterError) {
+      const message = error.code === "LIMIT_FILE_SIZE" ? "File must be 50MB or smaller" : error.message;
+      return res.status(400).json({ message });
     }
 
     const status = error.status || 500;

@@ -83,6 +83,27 @@ test("a non-participant cannot upload an attachment to someone else's conversati
     .expect(403);
 });
 
+// #53 stress-test regression: this used to 500 with a raw Multer error
+// instead of the same clean 400 validateUpload() gives for other rejected
+// files -- MulterError wasn't mapped in the global error handler.
+test("an over-the-limit upload is rejected with a clean 400, not a raw 500", async () => {
+  const tutorToken = await login("tutor@smarttutor.local");
+  const accept = await request(app)
+    .patch("/api/bookings/bk-1001/accept")
+    .set("Authorization", `Bearer ${tutorToken}`)
+    .send({})
+    .expect(200);
+  const conversationId = accept.body.conversationId;
+
+  const oversized = Buffer.alloc(51 * 1024 * 1024, 1);
+  const response = await request(app)
+    .post(`/api/messages/conversations/${conversationId}/attachments`)
+    .set("Authorization", `Bearer ${tutorToken}`)
+    .attach("file", oversized, { filename: "huge.png", contentType: "image/png" })
+    .expect(400);
+  assert.match(response.body.message, /50MB/);
+});
+
 test("a message with only an attachment and no text is accepted, but an empty message with neither is rejected", async () => {
   const tutorToken = await login("tutor@smarttutor.local");
   const accept = await request(app)

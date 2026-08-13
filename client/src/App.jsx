@@ -1455,7 +1455,11 @@ function BookingsPage() {
 }
 
 const MESSAGE_PAGE_SIZE = 20;
-const CHAT_POLL_MS = 4000;
+// #53: the 4s poll meant a received message could take up to 4s to appear,
+// missing the "arrives within about 1 second" acceptance criterion. Typing
+// already polled at 1s, so this just matches that existing rate rather than
+// introducing a new mechanism -- still polling, not the #41 push question.
+const CHAT_POLL_MS = 1000;
 const TYPING_POLL_MS = 1000;
 
 function MessagesPage() {
