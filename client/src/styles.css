@@ -369,17 +369,25 @@ th {
   transform: translateX(-50%);
 }
 
+/* flex-wrap, not a fixed-column grid: a rigid grid needs its column count
+   kept in sync across every breakpoint, and the previous version fell out of
+   sync at 1024-1180px -- Availability and Language wrapped onto their own
+   row but inherited the search-input/button track widths, stretching one
+   and orphaning the other. Flex-wrap reflows any number of filters at any
+   width with one rule. */
 .search-toolbar {
   min-height: 80px;
-  display: grid;
-  grid-template-columns: minmax(280px, 600px) 120px repeat(5, 96px);
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 12px;
   padding: 18px 0;
   background: white;
 }
 
 .search-input {
+  flex: 1 1 280px;
+  min-width: 220px;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -411,25 +419,29 @@ th {
 }
 
 .search-submit {
+  flex: 0 0 auto;
   min-height: 44px;
 }
 
 .search-filter {
+  flex: 0 0 auto;
   min-height: 44px;
+  min-width: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   border-radius: 8px;
   background: white;
   color: var(--muted);
 }
 
 .search-filter select {
+  width: auto;
   height: 44px;
   padding: 0 10px;
   font-size: 14px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -595,10 +607,6 @@ th {
 }
 
 @media (max-width: 1180px) {
-  .search-toolbar {
-    grid-template-columns: minmax(280px, 1fr) 120px repeat(3, 96px);
-  }
-
   .tutor-card-grid {
     grid-template-columns: repeat(2, minmax(0, 400px));
   }
@@ -612,14 +620,17 @@ th {
   }
 
   .search-toolbar {
-    grid-template-columns: 1fr;
     gap: 10px;
     padding: 12px 0;
   }
 
+  .search-input {
+    flex-basis: 100%;
+  }
+
   .search-filter,
   .search-submit {
-    width: 100%;
+    flex: 1 1 auto;
   }
 
   .search-summary {
@@ -691,12 +702,6 @@ th {
   display: grid;
   gap: 4px;
   justify-items: end;
-}
-
-@media (min-width: 1181px) and (max-width: 1320px) {
-  .search-toolbar {
-    grid-template-columns: minmax(280px, 1fr) 120px repeat(5, 96px);
-  }
 }
 
 /* Tutor Profile tabs — Figma node 9:134 */
